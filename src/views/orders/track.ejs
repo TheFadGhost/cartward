@@ -1,0 +1,53 @@
+<%- include('/partials/head') %>
+<div class="page-pad narrow">
+  <h1>Track an order</h1>
+  <p class="muted">Enter the order number from your confirmation email along with the email you used.</p>
+
+  <% if (errors.form) { %><div class="form-errors" role="alert"><%= errors.form %></div><% } %>
+
+  <form method="post" action="/orders/track" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="number">Order number</label>
+      <input type="text" id="number" name="number" placeholder="CW-XXXXXXXX"
+             value="<%= values.number %>" aria-invalid="<%= errors.number ? 'true' : 'false' %>" aria-describedby="err-number">
+      <span class="field-error" id="err-number"><%= errors.number || '' %></span>
+    </div>
+    <div class="field">
+      <label for="email">Email on the order</label>
+      <input type="email" id="email" name="email" autocomplete="email"
+             value="<%= values.email %>" aria-invalid="<%= errors.email ? 'true' : 'false' %>" aria-describedby="err-email">
+      <span class="field-error" id="err-email"><%= errors.email || '' %></span>
+    </div>
+    <button type="submit" class="button">Track order</button>
+  </form>
+
+  <% if (order) { %>
+    <section class="review-block track-result">
+      <h2><%= order.number %> — <span class="status-pill status-<%= order.status %>" data-status="<%= order.status %>"><%= order.status %></span></h2>
+      <p>Placed <%= new Date(order.placed_at).toLocaleString('en-US') %> · total <%= formatMoney(order.total_cents) %></p>
+      <ol class="timeline">
+        <% events.forEach((ev) => { %>
+          <li class="timeline-event">
+            <span class="timeline-time"><%= new Date(ev.created_at).toLocaleString('en-US') %></span>
+            <span class="timeline-body">
+              <% if (ev.type === 'state_change') { %>
+                Status changed from <strong><%= ev.from_status %></strong> to <strong><%= ev.to_status %></strong>.
+              <% } else { %>
+                <%= ev.detail || ev.type %>
+              <% } %>
+            </span>
+          </li>
+        <% }) %>
+      </ol>
+      <% if (order.status === 'pending') { %>
+        <form method="post" action="/orders/<%= order.id %>/cancel">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="email" value="<%= values.email %>">
+          <button type="submit" class="button button-secondary">Cancel this order</button>
+        </form>
+      <% } %>
+    </section>
+  <% } %>
+</div>
+<%- include('/partials/footer') %>

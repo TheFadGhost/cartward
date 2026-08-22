@@ -1,0 +1,66 @@
+<%- include('/partials/head') %>
+<div class="checkout-layout page-pad">
+  <section class="checkout-main">
+    <h1>Payment</h1>
+
+    <% if (order.status === 'paid' || ['fulfilled','shipped'].includes(order.status)) { %>
+      <div class="flash flash-success" role="status">
+        Payment complete — thank you! Order <strong><%= order.number %></strong> is confirmed.
+      </div>
+      <p><a class="button" href="<%= user ? '/orders/' + order.id : '/orders/track?number=' + order.number + '&email=' + encodeURIComponent(JSON.parse(order.shipping_address_json).email) %>">View your order</a></p>
+    <% } else if (order.status === 'cancelled') { %>
+      <div class="flash flash-warn" role="status">
+        This order was cancelled (checkout wasn't completed in time, or you cancelled it).
+        If a payment already went through, it will be refunded automatically.
+      </div>
+      <p><a class="button" href="/">Back to the shop</a></p>
+    <% } else { %>
+      <% if (failureReason) { %>
+        <div class="flash flash-error" role="alert">
+          <%= failureReason %> Your card was not charged and your order is still in place — try another card below.
+        </div>
+      <% } else if (typeof query !== 'undefined' && query.await) { %>
+        <div class="flash flash-info" id="await-flash" role="status"
+             data-order-id="<%= order.id %>" data-poll-token="<%= pollToken %>">
+          Processing payment with the sandbox processor…
+        </div>
+      <% } %>
+
+      <p>Order <strong><%= order.number %></strong> · total <strong class="num"><%= formatMoney(order.total_cents) %></strong></p>
+
+      <form method="post" action="/checkout/pay/<%= order.id %>" class="stack pay-form" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="card_number">Card number</label>
+          <input type="text" id="card_number" name="card_number" autocomplete="cc-number" inputmode="numeric"
+                 placeholder="4242 4242 4242 4242" required value="">
+          <p class="hint">Sandbox processor: nothing is charged and this number is never stored.
+          Try <code>4242…4242</code> to succeed or <code>4000…0002</code> to see a decline.</p>
+        </div>
+        <fieldset class="field">
+          <legend>Demo scenarios (optional)</legend>
+          <label class="choice"><input type="checkbox" name="simulate_duplicate"> Deliver the success webhook twice</label>
+          <label class="choice"><input type="checkbox" name="simulate_invalid_signature"> Send one webhook with an invalid signature</label>
+          <label class="choice"><input type="checkbox" name="simulate_out_of_order"> Send a refund notice before settlement</label>
+        </fieldset>
+        <button type="submit" class="button">Pay <%= formatMoney(order.total_cents) %></button>
+      </form>
+
+      <details class="sandbox-help">
+        <summary>All test cards</summary>
+        <ul class="test-cards">
+          <% testCards.forEach((c) => { %><li><code><%= c.number %></code> — <%= c.behaviour %></li><% }) %>
+        </ul>
+      </details>
+    <% } %>
+  </section>
+  <aside class="checkout-summary">
+    <h2>In your order</h2>
+    <% lines.forEach((l) => { %>
+      <p class="sum-line"><span><%= l.product_name %> × <%= l.quantity %></span><span class="num"><%= formatMoney(l.line_total_cents) %></span></p>
+    <% }) %>
+    <p class="sum-line total"><span>Total</span><span class="num"><%= formatMoney(order.total_cents) %></span></p>
+  </aside>
+</div>
+<script src="/js/pay-poll.js"></script>
+<%- include('/partials/footer') %>

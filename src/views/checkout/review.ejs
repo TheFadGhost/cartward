@@ -1,0 +1,85 @@
+<%- include('/partials/head') %>
+<div class="checkout-layout page-pad">
+  <section class="checkout-main">
+    <nav class="checkout-steps" aria-label="Checkout progress">
+      <ol>
+        <li><a href="/checkout"><span class="step-num">1</span> Address</a></li>
+        <li><a href="/checkout/delivery"><span class="step-num">2</span> Delivery</a></li>
+        <li aria-current="step"><span class="step-num">3</span> Review &amp; pay</li>
+      </ol>
+    </nav>
+
+    <h1>Review your order</h1>
+
+    <% if (view.hasPriceChanges) { %>
+      <div class="flash flash-warn" role="alert">
+        Prices changed since you added these items. You'll be charged today's prices shown below.
+      </div>
+    <% } %>
+
+    <table class="cart-table review-table">
+      <thead><tr><th scope="col">Item</th><th scope="col" class="num">Price</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Total</th></tr></thead>
+      <tbody>
+        <% lines.forEach((l) => { %>
+          <tr>
+            <td><%= l.name %><% if (l.variantLabel !== 'Standard') { %> <span class="variant-note"><%= l.variantLabel %></span><% } %></td>
+            <td class="num">
+              <%= formatMoney(l.currentCents) %>
+              <% if (l.priceChangedNow) { %><span class="price-change">was <%= formatMoney(l.snapshotCents) %></span><% } %>
+            </td>
+            <td class="num"><%= l.quantity %></td>
+            <td class="num"><%= formatMoney(l.lineTotalCents) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <section class="review-block">
+      <h2>Deliver to</h2>
+      <p>
+        <%= address.name %>, <%= address.line1 %><%= address.line2 ? ', ' + address.line2 : '' %>,
+        <%= address.city %>, <%= address.region %> <%= address.postal_code %>, US
+        · <%= address.email %>
+        <a href="/checkout">Edit</a>
+      </p>
+      <h2>Delivery method</h2>
+      <% const m = options.find(o => o.id === methodId); %>
+      <p><%= m.label %> — <%= m.estimate %> <a href="/checkout/delivery">Edit</a></p>
+    </section>
+
+    <form method="post" action="/checkout/discount" class="discount-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label for="code">Discount code</label>
+      <div class="discount-row">
+        <input type="text" id="code" name="code" value="<%= discountCode || '' %>" placeholder="e.g. WELCOME10" autocomplete="off">
+        <button type="submit" class="button button-secondary">Apply</button>
+      </div>
+    </form>
+
+    <form method="post" action="/checkout/place" class="place-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="_ik" value="<%= idempotencyKey %>">
+      <dl class="totals num-aligned">
+        <div><dt>Subtotal</dt><dd><%= formatMoney(totals.subtotalCents) %></dd></div>
+        <% if (totals.discountCents > 0) { %>
+          <div><dt>Discount (<%= discountCode.toUpperCase() %>)</dt><dd>−<%= formatMoney(totals.discountCents) %></dd></div>
+        <% } %>
+        <div><dt>Shipping</dt><dd><%= totals.shippingFreeApplied ? 'Free' : formatMoney(totals.shippingCents) %></dd></div>
+        <div><dt>Tax<% if (totals.taxRateBp > 0) { %> (<%= (totals.taxRateBp/100).toFixed(2) %>% to <%= address.region %>)<% } else { %> (none for this state)<% } %></dt><dd><%= formatMoney(totals.taxCents) %></dd></div>
+        <div class="grand"><dt>Total</dt><dd><%= formatMoney(totals.totalCents) %></dd></div>
+      </dl>
+      <button type="submit" class="button place-btn">Place order &amp; continue to payment</button>
+      <p class="tax-note">Sandbox checkout: no real money moves. You'll pick a test card next.</p>
+    </form>
+  </section>
+
+  <aside class="checkout-summary">
+    <h2>Sandbox test cards</h2>
+    <ul class="test-cards">
+      <% testCards.forEach((c) => { %>
+        <li><code><%= c.number %></code> — <%= c.behaviour %></li>
+      <% }) %>
+    </ul>
+  </aside>
+</div>
+<%- include('/partials/footer') %>

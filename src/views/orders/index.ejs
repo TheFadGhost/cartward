@@ -1,0 +1,28 @@
+<%- include('/partials/head') %>
+<div class="page-pad">
+  <h1>Your orders</h1>
+  <% if (orders.length === 0) { %>
+    <div class="empty-state">
+      <h2>No orders yet</h2>
+      <p>When you place an order it will show up here with its full history.</p>
+      <p><a class="button" href="/">Start browsing</a></p>
+    </div>
+  <% } else { %>
+    <table class="cart-table orders-table">
+      <thead><tr><th scope="col">Order</th><th scope="col">Placed</th><th scope="col">Status</th><th scope="col" class="num">Items</th><th scope="col" class="num">Total</th></tr></thead>
+      <tbody>
+        <% orders.forEach((o) => { %>
+          <tr>
+            <td><a href="/orders/<%= o.id %>"><%= o.number %></a></td>
+            <td><%= new Date(o.placed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %></td>
+            <td><span class="status-pill status-<%= o.status %>" data-status="<%= o.status %>"><%= o.status %></span></td>
+            <td class="num"><%= o.line_count %></td>
+            <td class="num"><%= formatMoney(o.total_cents) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+  <p class="muted"><a href="/orders/track">Tracking a guest order?</a></p>
+</div>
+<%- include('/partials/footer') %>

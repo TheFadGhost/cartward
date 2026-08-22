@@ -1,0 +1,41 @@
+<%- include('/partials/head') %>
+<div class="checkout-layout page-pad">
+  <section class="checkout-main">
+    <nav class="checkout-steps" aria-label="Checkout progress">
+      <ol>
+        <li><a href="/checkout"><span class="step-num">1</span> Address</a></li>
+        <li aria-current="step"><span class="step-num">2</span> Delivery</li>
+        <li><span class="step-num">3</span> Review &amp; pay</li>
+      </ol>
+    </nav>
+
+    <h1>Choose delivery</h1>
+    <form method="post" action="/checkout/delivery" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <fieldset class="delivery-options">
+        <legend class="visually-hidden">Delivery method</legend>
+        <% options.forEach((opt, i) => { %>
+          <label class="delivery-option">
+            <input type="radio" name="shipping_method" value="<%= opt.id %>"
+                   <%= selected === opt.id || (i === 0 && !selected) ? 'checked' : '' %> required>
+            <span class="option-body">
+              <span class="option-name"><%= opt.label %></span>
+              <span class="option-eta"><%= opt.estimate %></span>
+            </span>
+            <span class="option-price num"><% if (opt.freeOverCents !== null) { %>Free over <%= formatMoney(opt.freeOverCents) %><br><% } %><%= formatMoney(opt.effectiveCents) %></span>
+          </label>
+        <% }) %>
+      </fieldset>
+      <button type="submit" class="button">Continue to review</button>
+      <p><a href="/cart" class="quiet-link">Back to cart</a></p>
+    </form>
+  </section>
+  <aside class="checkout-summary">
+    <h2>Order summary</h2>
+    <% view.lines.forEach((l) => { %>
+      <p class="sum-line"><span><%= l.name %> × <%= l.quantity %></span><span class="num"><%= formatMoney(l.snapshotCents * l.quantity) %></span></p>
+    <% }) %>
+    <p class="sum-line total"><span>Subtotal</span><span class="num"><%= formatMoney(view.subtotalCents) %></span></p>
+  </aside>
+</div>
+<%- include('/partials/footer') %>

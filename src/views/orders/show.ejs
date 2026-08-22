@@ -1,0 +1,72 @@
+<%- include('/partials/head') %>
+<div class="page-pad">
+  <p class="breadcrumb"><a href="/orders">Your orders</a> / <span aria-current="page"><%= order.number %></span></p>
+  <h1>Order <%= order.number %></h1>
+
+  <div class="order-head">
+    <span class="status-pill status-<%= order.status %>" data-status="<%= order.status %>"><%= order.status %></span>
+    <span class="muted">Placed <%= new Date(order.placed_at).toLocaleString('en-US') %></span>
+  </div>
+
+  <% if (order.status === 'pending') { %>
+    <div class="flash flash-info" role="status">
+      Awaiting payment. If you've just paid, this page will catch up shortly.
+      <a href="/checkout/pay/<%= order.id %>">Complete payment</a>
+      <% if (user) { %>
+        <form method="post" action="/orders/<%= order.id %>/cancel" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="linklike">Cancel this order</button>
+        </form>
+      <% } %>
+    </div>
+  <% } %>
+
+  <table class="cart-table">
+    <thead><tr><th scope="col">Item</th><th scope="col" class="num">Price</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Total</th></tr></thead>
+    <tbody>
+      <% lines.forEach((l) => { %>
+        <tr>
+          <td><%= l.product_name %><% if (l.variant_label !== 'Standard') { %> <span class="variant-note"><%= l.variant_label %></span><% } %></td>
+          <td class="num"><%= formatMoney(l.unit_price_cents) %></td>
+          <td class="num"><%= l.quantity %></td>
+          <td class="num"><%= formatMoney(l.line_total_cents) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <dl class="totals num-aligned">
+    <div><dt>Subtotal</dt><dd><%= formatMoney(order.subtotal_cents) %></dd></div>
+    <% if (order.discount_cents > 0) { %><div><dt>Discount</dt><dd>−<%= formatMoney(order.discount_cents) %></dd></div><% } %>
+    <div><dt>Shipping</dt><dd><%= order.shipping_cents === 0 ? 'Free' : formatMoney(order.shipping_cents) %></dd></div>
+    <div><dt>Tax</dt><dd><%= formatMoney(order.tax_cents) %></dd></div>
+    <div class="grand"><dt>Total</dt><dd><%= formatMoney(order.total_cents) %></dd></div>
+    <% if (order.refund_total_cents > 0) { %><div><dt>Refunded</dt><dd>−<%= formatMoney(order.refund_total_cents) %></dd></div><% } %>
+  </dl>
+
+  <% const addr = JSON.parse(order.shipping_address_json); %>
+  <section class="review-block">
+    <h2>Delivery</h2>
+    <p><%= addr.name %>, <%= addr.line1 %><%= addr.line2 ? ', ' + addr.line2 : '' %>, <%= addr.city %>, <%= addr.region %> <%= addr.postal_code %></p>
+  </section>
+
+  <section class="review-block">
+    <h2>History</h2>
+    <ol class="timeline">
+      <% events.forEach((ev) => { %>
+        <li class="timeline-event">
+          <span class="timeline-time"><%= new Date(ev.created_at).toLocaleString('en-US') %></span>
+          <span class="timeline-body">
+            <% if (ev.type === 'state_change') { %>
+              Status changed from <strong><%= ev.from_status %></strong> to <strong><%= ev.to_status %></strong>.
+            <% } else { %>
+              <%= ev.detail || ev.type %>
+            <% } %>
+            <% if (ev.detail && ev.type === 'state_change') { %><span class="muted"><%= ev.detail %></span><% } %>
+          </span>
+        </li>
+      <% }) %>
+    </ol>
+  </section>
+</div>
+<%- include('/partials/footer') %>

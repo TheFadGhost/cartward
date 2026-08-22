@@ -16,6 +16,18 @@ process.env.APP_BASE_URL = 'http://localhost:3000';
 
 const { createApp } = await import('../../src/app.js');
 const { db } = await import('../../src/db/index.js');
+const { config } = await import('../../src/config.js');
+
+/** Start the app on an ephemeral port and point webhook delivery at it. */
+export async function listen() {
+  const app = createApp();
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  // The mock provider delivers webhooks to config.baseUrl over HTTP.
+  config.baseUrl = baseUrl;
+  return { server, baseUrl, close: () => new Promise((r) => server.close(r)) };
+}
 
 /** Higher-level HTTP client over supertest with cookie persistence. */
 export async function makeClient() {

@@ -1,0 +1,80 @@
+<%- include('/partials/head') %>
+<div class="checkout-layout page-pad">
+  <section class="checkout-main">
+    <nav class="checkout-steps" aria-label="Checkout progress">
+      <ol>
+        <li <%= step === 1 ? 'aria-current="step"' : '' %>><span class="step-num">1</span> Address</li>
+        <li <%= step === 2 ? 'aria-current="step"' : '' %>><span class="step-num">2</span> Delivery</li>
+        <li <%= step === 3 ? 'aria-current="step"' : '' %>><span class="step-num">3</span> Review &amp; pay</li>
+      </ol>
+    </nav>
+
+    <h1><%= title %></h1>
+    <% if (locals.formError) { %><div class="form-errors" role="alert"><%= locals.formError %></div><% } %>
+
+    <form method="post" action="/checkout/address" class="stack checkout-form" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" autocomplete="name" required
+               value="<%= values.name || '' %>" aria-invalid="<%= errors.name ? 'true' : 'false' %>"
+               aria-describedby="err-name">
+        <span class="field-error" id="err-name"><%= errors.name || '' %></span>
+      </div>
+      <div class="field">
+        <label for="email">Email for the receipt</label>
+        <input type="email" id="email" name="email" autocomplete="email" required
+               value="<%= values.email || '' %>" aria-invalid="<%= errors.email ? 'true' : 'false' %>"
+               aria-describedby="err-email">
+        <span class="field-error" id="err-email"><%= errors.email || '' %></span>
+      </div>
+      <div class="field">
+        <label for="line1">Street address</label>
+        <input type="text" id="line1" name="line1" autocomplete="address-line1" required
+               value="<%= values.line1 || '' %>" aria-invalid="<%= errors.line1 ? 'true' : 'false' %>"
+               aria-describedby="err-line1">
+        <span class="field-error" id="err-line1"><%= errors.line1 || '' %></span>
+      </div>
+      <div class="field">
+        <label for="line2">Apartment, suite, etc. <span class="optional">(optional)</span></label>
+        <input type="text" id="line2" name="line2" autocomplete="address-line2"
+               value="<%= values.line2 || '' %>">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" autocomplete="address-level2" required
+                 value="<%= values.city || '' %>" aria-invalid="<%= errors.city ? 'true' : 'false' %>"
+                 aria-describedby="err-city">
+          <span class="field-error" id="err-city"><%= errors.city || '' %></span>
+        </div>
+        <div class="field field-small">
+          <label for="region">State</label>
+          <input type="text" id="region" name="region" autocomplete="address-level1" required maxlength="2"
+                 placeholder="NY" value="<%= values.region || '' %>" aria-invalid="<%= errors.region ? 'true' : 'false' %>"
+                 aria-describedby="err-region">
+          <span class="field-error" id="err-region"><%= errors.region || '' %></span>
+        </div>
+        <div class="field field-small">
+          <label for="postal_code">ZIP</label>
+          <input type="text" id="postal_code" name="postal_code" autocomplete="postal-code" required inputmode="numeric"
+                 value="<%= values.postal_code || '' %>" aria-invalid="<%= errors.postal_code ? 'true' : 'false' %>"
+                 aria-describedby="err-postal_code">
+          <span class="field-error" id="err-postal_code"><%= errors.postal_code || '' %></span>
+        </div>
+      </div>
+      <input type="hidden" name="country" value="US" autocomplete="country">
+      <button type="submit" class="button">Continue to delivery</button>
+    </form>
+  </section>
+  <aside class="checkout-summary">
+    <% if (typeof view !== 'undefined' && view && !view.isEmpty) { %>
+      <h2>Order summary</h2>
+      <% view.lines.forEach((l) => { %>
+        <p class="sum-line"><span><%= l.name %> × <%= l.quantity %></span><span class="num"><%= formatMoney(l.snapshotCents * l.quantity) %></span></p>
+      <% }) %>
+      <p class="sum-line total"><span>Subtotal</span><span class="num"><%= formatMoney(view.subtotalCents) %></span></p>
+    <% } %>
+  </aside>
+</div>
+<%- include('/partials/footer') %>

@@ -11,6 +11,9 @@ import homeRoutes from './routes/home.js';
 import catalogRoutes from './routes/catalog.js';
 import cartRoutes from './routes/cart.js';
 import mediaRoutes from './routes/media.js';
+import checkoutRoutes from './routes/checkout.js';
+import orderRoutes from './routes/orders.js';
+import webhookRoutes from './routes/webhooks.js';
 import { formatMoney } from './lib/money.js';
 import { log } from './lib/logger.js';
 import { resolveCart } from './services/cart.js';
@@ -44,6 +47,10 @@ export function createApp() {
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     crossOriginResourcePolicy: { policy: 'same-origin' },
   }));
+
+  // The webhook route needs the raw body for signature verification —
+  // mount it before the JSON parser touches anything.
+  app.use(webhookRoutes);
 
   app.use(express.urlencoded({ extended: false, limit: '64kb' }));
   app.use(express.json({ limit: '64kb' }));
@@ -110,6 +117,8 @@ export function createApp() {
   app.use(authRoutes);
   app.use(catalogRoutes);
   app.use(cartRoutes);
+  app.use(checkoutRoutes);
+  app.use(orderRoutes);
 
   // 404
   app.use((req, res) => {
