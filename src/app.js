@@ -8,8 +8,13 @@ import { csrfMiddleware } from './middleware/csrf.js';
 import { requestLogMiddleware } from './middleware/request-log.js';
 import authRoutes from './routes/auth.js';
 import homeRoutes from './routes/home.js';
+import catalogRoutes from './routes/catalog.js';
+import cartRoutes from './routes/cart.js';
+import mediaRoutes from './routes/media.js';
 import { formatMoney } from './lib/money.js';
 import { log } from './lib/logger.js';
+import { resolveCart } from './services/cart.js';
+import { db } from './db/index.js';
 
 export function createApp() {
   const app = express();
@@ -48,6 +53,7 @@ export function createApp() {
   app.use(csrfMiddleware);
 
   // View helpers available to every template.
+  const cartCountStmt = () => db.prepare('SELECT COALESCE(SUM(quantity),0) n FROM cart_items WHERE cart_id = ?');
   app.use((req, res, next) => {
     res.locals.user = req.user;
     res.locals.pending2fa = req.pending2fa;
@@ -55,6 +61,18 @@ export function createApp() {
     res.locals.currentPath = req.path;
     res.locals.config = config;
     res.locals.formatMoney = formatMoney;
+    next();
+  });
+
+  // Header cart badge — resolves without creating carts on every request.
+  app.use((req, res, next) => {
+    res.locals.cartCount = 0;
+    if (['GET', 'HEAD'].includes(req.method)) {
+      try {
+        const cart = resolveCart(req, res);
+        if (cart) res.locals.cartCount = cartCountStmt().get(cart.id).n;
+      } catch { /* header badge is best-effort */ }
+    }
     next();
   });
 
@@ -87,8 +105,11 @@ export function createApp() {
     setHeaders(res) { res.setHeader('Cross-Origin-Resource-Policy', 'same-origin'); },
   }));
 
+  app.use(mediaRoutes);
   app.use(homeRoutes);
   app.use(authRoutes);
+  app.use(catalogRoutes);
+  app.use(cartRoutes);
 
   // 404
   app.use((req, res) => {

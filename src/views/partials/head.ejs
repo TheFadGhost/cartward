@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="<%= locals.csrfToken %>">
 <title><%= title || 'Cartward' %> · Cartward</title>
 <script src="/js/theme.js"></script>
 <link rel="stylesheet" href="/css/tokens.css">
@@ -28,6 +29,7 @@
         <% } else { %>
           <a href="/login" <%= locals.currentPath === '/login' ? 'aria-current="page"' : '' %>>Sign in</a>
         <% } %>
+        <a class="cart-link" href="/cart" <%= locals.currentPath === '/cart' ? 'aria-current="page"' : '' %>>Cart<% if (locals.cartCount > 0) { %> (<%= locals.cartCount %>)<% } %></a>
         <button class="theme-toggle linklike" type="button" data-theme-toggle aria-label="Toggle colour theme">Theme</button>
       </div>
     </nav>

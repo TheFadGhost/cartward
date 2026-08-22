@@ -1,0 +1,91 @@
+<%- include('/partials/head') %>
+
+<div class="page-pad">
+  <h1>Your cart</h1>
+
+  <% if (cart.isEmpty) { %>
+    <div class="empty-state">
+      <h2>Your cart is empty</h2>
+      <p>Nothing here yet. Have a look around the shop.</p>
+      <p><a class="button" href="/">Browse the shop</a></p>
+    </div>
+  <% } else { %>
+    <% if (cart.hasPriceChanges) { %>
+      <div class="flash flash-warn" role="alert">
+        Prices have changed since you added some items. Your cart shows the price you'll pay today.
+      </div>
+    <% } %>
+
+    <% if (cart.lines.some(l => l.problem)) { %>
+      <div class="flash flash-error" role="alert">
+        Some items need attention before checkout.
+        <% cart.lines.filter(l => l.problem).forEach((l) => { %>
+          <strong><%= l.name %> (<%= l.variantLabel %>)</strong> — <%= l.problem === 'out_of_stock' ? 'now out of stock.' : `only ${l.maxQuantity} available.` %>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <form method="post" action="/cart/update" id="cart-form">
+      <table class="cart-table">
+        <caption class="visually-hidden">Items in your cart</caption>
+        <thead>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col" class="num">Price</th>
+            <th scope="col">Quantity</th>
+            <th scope="col" class="num">Total</th>
+            <th scope="col"><span class="visually-hidden">Remove</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% cart.lines.forEach((line) => { %>
+            <tr class="<%= line.problem ? 'line-problem' : '' %>">
+              <td class="cell-item">
+                <a href="/products/<%= line.slug %>"><%= line.name %></a>
+                <% if (line.variantLabel !== 'Standard') { %><span class="variant-note"><%= line.variantLabel %></span><% } %>
+                <% if (line.priceChanged) { %>
+                  <span class="price-change"><%= formatMoney(line.snapshotCents) %> → <%= formatMoney(line.currentCents) %> each</span>
+                <% } %>
+                <% if (line.backordered) { %><span class="stock-note stock-backorder">Backordered</span><% } %>
+              </td>
+              <td class="num"><%= formatMoney(line.currentCents) %></td>
+              <td>
+                <div class="qty-inline">
+                  <label for="qty-<%= line.itemId %>" class="visually-hidden">Quantity for <%= line.name %></label>
+                  <input type="number" id="qty-<%= line.itemId %>" name="quantity_<%= line.itemId %>"
+                         value="<%= line.quantity %>" min="0" max="<%= Math.max(line.maxQuantity, 1) %>" inputmode="numeric"
+                         data-item-id="<%= line.itemId %>">
+                  <% if (line.problem === 'quantity_limited') { %>
+                    <span class="field-error"><%= line.maxQuantity %> available</span>
+                  <% } %>
+                </div>
+              </td>
+              <td class="num"><%= formatMoney(line.lineTotalCents) %></td>
+              <td>
+                <button type="submit" class="linklike" formaction="/cart/remove" formnovalidate
+                        name="item_id" value="<%= line.itemId %>">Remove</button>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="item_id" value="">
+    </form>
+
+    <div class="cart-summary">
+      <p class="cart-subtotal">Subtotal <span class="amount"><%= formatMoney(cart.subtotalCents) %></span></p>
+      <p class="tax-note">Shipping and tax calculated at checkout.</p>
+      <div class="cart-actions">
+        <a class="button button-secondary" href="/">Keep browsing</a>
+        <% if (!cart.hasProblems) { %>
+          <a class="button checkout-btn" href="/checkout">Go to checkout</a>
+        <% } else { %>
+          <button class="button checkout-btn" disabled aria-disabled="true" title="Resolve the highlighted items first">Go to checkout</button>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('/partials/footer') %>

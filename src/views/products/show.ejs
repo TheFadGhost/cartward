@@ -1,0 +1,98 @@
+<%- include('/partials/head') %>
+
+<div class="product-page page-pad">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="/">Shop</a>
+    <% if (product.category_slug) { %> / <a href="/?category=<%= product.category_slug %>"><%= product.category_name %></a><% } %>
+    / <span aria-current="page"><%= product.name %></span>
+  </nav>
+
+  <div class="product-layout">
+    <section class="gallery" aria-label="Product photos">
+      <% if (product.images.length) { %>
+        <div class="gallery-main">
+          <img src="<%= product.images[0].url %>" alt="<%= product.images[0].alt_text %>" width="<%= product.images[0].width || 800 %>" height="<%= product.images[0].height || 800 %>">
+        </div>
+        <% if (product.images.length > 1) { %>
+          <div class="gallery-thumbs" role="list">
+            <% product.images.forEach((img) => { %>
+              <div role="listitem" class="thumb-frame">
+                <a href="#gallery-<%= img.id %>" class="thumb-link"><img src="<%= img.url %>" alt="<%= img.alt_text %>" width="160" height="160"></a>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      <% } else { %>
+        <div class="gallery-main"><img src="/img/product-placeholder.svg" alt="" width="800" height="800"></div>
+      <% } %>
+    </section>
+
+    <section class="buy-box">
+      <% if (product.brand_name) { %><p class="brand-eyebrow"><%= product.brand_name %></p><% } %>
+      <h1><%= product.name %></h1>
+
+      <% const minPrice = Math.min(...product.variants.map(v => v.price_cents)); %>
+      <p class="pdp-price"><%= formatMoney(minPrice) %></p>
+      <p class="tax-note">Prices exclude tax, calculated at checkout where applicable.</p>
+
+      <% if (product.tags.length) { %>
+        <ul class="tag-list" aria-label="Tags">
+          <% product.tags.forEach((t) => { %><li><a href="/?tag=<%= t.slug %>"><%= t.name %></a></li><% }) %>
+        </ul>
+      <% } %>
+
+      <form method="post" action="/cart/add" class="buy-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <% if (product.variants.some(v => v.option_size || v.option_colour)) { %>
+          <fieldset class="field variant-fieldset">
+            <legend>Choose an option</legend>
+            <div class="variant-grid">
+              <% product.variants.forEach((v, idx) => {
+                const label = [v.option_size, v.option_colour].filter(Boolean).join(' / ');
+                const state = !v.purchasable ? 'out' : (!v.inStock && v.backorderable) ? 'backorder' : 'in';
+              %>
+              <label class="variant-pill variant-<%= state %>">
+                <input type="radio" name="variant_id" value="<%= v.id %>" <%= idx === 0 && v.purchasable ? 'checked' : '' %> <%= !v.purchasable ? 'disabled' : '' %> required
+                       data-price-cents="<%= v.price_cents %>" data-state="<%= state %>" data-available="<%= v.available %>">
+                <span class="pill-label"><%= label || v.sku %></span>
+                <span class="pill-sub">
+                  <% if (state === 'out') { %>Out of stock<% } else if (state === 'backorder') { %>Backordered<% } else if (v.available <= 5) { %><%= v.available %> left<% } else { %><%= formatMoney(v.price_cents) %><% } %>
+                </span>
+              </label>
+              <% }) %>
+            </div>
+            <span class="field-error" id="stock-note-live" role="status"></span>
+          </fieldset>
+        <% } else if (product.variants.length === 1) { %>
+          <input type="hidden" name="variant_id" value="<%= product.variants[0].id %>">
+          <% const v = product.variants[0]; %>
+          <% if (!v.purchasable) { %>
+            <p class="stock-note stock-out">Out of stock</p>
+          <% } else if (!v.inStock) { %>
+            <p class="stock-note stock-backorder">Backordered — ships in 2–3 weeks</p>
+          <% } else if (v.available <= 5) { %>
+            <p class="stock-note stock-low">Low stock — <%= v.available %> left</p>
+          <% } %>
+          <% var singlePurchasable = !!v.purchasable; %>
+        <% } %>
+
+        <div class="qty-row">
+          <label for="quantity">Quantity</label>
+          <input type="number" id="quantity" name="quantity" value="1" min="1" max="20" inputmode="numeric">
+        </div>
+
+        <button type="submit" class="button add-to-cart" <%= (typeof singlePurchasable !== 'undefined' && !singlePurchasable) ? 'disabled aria-disabled="true"' : '' %>>Add to cart</button>
+      </form>
+
+      <section class="product-description" aria-label="Description">
+        <h2>About this product</h2>
+        <% product.description.split('\n\n').forEach((para) => { %>
+          <p><%= para %></p>
+        <% }) %>
+      </section>
+    </section>
+  </div>
+</div>
+
+<%- include('/partials/footer') %>

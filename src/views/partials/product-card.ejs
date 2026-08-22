@@ -1,0 +1,19 @@
+<article class="product-card">
+  <a href="/products/<%= item.slug %>" class="card-media-link">
+    <div class="card-frame">
+      <% if (item.image) { %>
+        <img src="<%= item.image.url %>" alt="<%= item.image.alt %>" width="800" height="800" loading="lazy">
+      <% } else { %>
+        <img src="/img/product-placeholder.svg" alt="" width="800" height="800" loading="lazy">
+      <% } %>
+    </div>
+  </a>
+  <% if (item.brand) { %><p class="brand-eyebrow"><%= item.brand %></p><% } %>
+  <h3 class="card-title"><a href="/products/<%= item.slug %>"><%= item.name %></a></h3>
+  <p class="card-price"><%= formatMoney(item.minPriceCents) %><% if (item.maxPriceCents !== item.minPriceCents) { %> – <%= formatMoney(item.maxPriceCents) %><% } %></p>
+  <% if (item.totalAvailable <= 0 && item.anyBackorderable) { %>
+    <p class="stock-note stock-backorder">Backordered</p>
+  <% } else if (item.totalAvailable <= 0) { %>
+    <p class="stock-note stock-out">Out of stock</p>
+  <% } %>
+</article>

@@ -59,6 +59,8 @@ export async function makeClient() {
 
 /** Extract the _csrf token from a rendered page. */
 export function csrfOf(htmlResponse) {
+  const meta = /<meta name="csrf-token" content="([^"]+)"/.exec(htmlResponse.text);
+  if (meta) return meta[1];
   const match = /name="_csrf" value="([^"]+)"/.exec(htmlResponse.text);
   if (!match) throw new Error('No CSRF token found on page');
   return match[1];

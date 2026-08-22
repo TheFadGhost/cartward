@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { config } from '../config.js';
 import { rateLimitMiddleware } from '../lib/rate-limit.js';
 import {
   AuthError, createUser, findUserByEmail, verifyEmailWithToken, issueEmailVerification,
   requestPasswordReset, resetPasswordWithToken, verifyTotpChallenge, verifyPassword,
 } from '../services/auth.js';
+import { mergeGuestCartOnLogin } from '../services/cart.js';
 import {
   createSession, destroySession, rotateSession, setSessionCookie, clearSessionCookie,
 } from '../services/sessions.js';
@@ -115,6 +117,21 @@ const loginSchema = z.object({
 });
 const safeNext = (n) => (n && n.startsWith('/') && !n.startsWith('//') ? n : null);
 
+/** Merge the guest cart on sign-in and surface an honest summary. */
+function mergeGuestCartAndReport(req, res, user) {
+  const guestToken = req.cookies[config.session.cartCookieName];
+  if (!guestToken) return;
+  const result = mergeGuestCartOnLogin(user.id, guestToken);
+  res.clearCookie(config.session.cartCookieName);
+  if (!result.merged) return;
+  if (result.capped?.length) {
+    const names = result.capped.map((c) => c.name).join(', ');
+    res.flash('warn', `Quantities for ${names} were limited to available stock.`);
+  } else if (result.mergedItems > 0 || result.adopted) {
+    res.flash('success', 'Your cart came with you.');
+  }
+}
+
 router.get('/login', (req, res) => {
   if (req.user && req.pending2fa) return res.redirect('/login/challenge');
   if (req.user) return res.redirect('/account');
@@ -158,6 +175,7 @@ router.post('/login',
       setSessionCookie(res, session.token);
       if (totpOn) return res.redirect('/login/challenge');
 
+      mergeGuestCartAndReport(req, res, user);
       res.flash('success', `Signed in as ${user.email}.`);
       return res.redirect(safeNext(parsed.data.next) || '/account');
     } catch (err) {
@@ -191,6 +209,7 @@ router.post('/login/challenge',
     }
     const rotated = rotateSession(req.sessionId, req.user.id, clientContext(req));
     setSessionCookie(res, rotated.token);
+    mergeGuestCartAndReport(req, res, req.user);
     if (result.viaRecoveryCode) {
       res.flash('warn', 'You signed in with a recovery code. Consider generating new ones from your account settings.');
     }

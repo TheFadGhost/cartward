@@ -1,0 +1,90 @@
+<%- include('/partials/head') %>
+
+<div class="shop-layout page-pad">
+  <aside class="shop-filters" aria-label="Filters">
+    <form method="get" action="/" class="filter-form">
+      <h2 class="filters-heading">Filters<% if (hasFilters) { %> <a class="clear-link" href="/">Clear</a><% } %></h2>
+
+      <div class="field">
+        <label for="q">Search</label>
+        <input type="search" id="q" name="q" value="<%= q %>" placeholder="Search the shop">
+      </div>
+
+      <fieldset class="field filter-group">
+        <legend>Category</legend>
+        <% categories.forEach((c) => { %>
+          <label class="choice">
+            <input type="radio" name="category" value="" <%= !category ? 'checked' : '' %> class="visually-hidden-cat">
+            <input type="radio" name="category" value="<%= c.slug %>" <%= category === c.slug ? 'checked' : '' %>>
+            <span><%= c.name %> <span class="count"><%= c.product_count %></span></span>
+          </label>
+        <% }) %>
+      </fieldset>
+
+      <div class="field">
+        <label for="min_price">Price from ($)</label>
+        <input type="number" id="min_price" name="min_price" min="0" step="1" value="<%= minPrice !== null ? (minPrice/100) : '' %>">
+        <label for="max_price">to ($)</label>
+        <input type="number" id="max_price" name="max_price" min="0" step="1" value="<%= maxPrice !== null ? (maxPrice/100) : '' %>">
+      </div>
+
+      <label class="choice">
+        <input type="checkbox" name="in_stock" value="1" <%= inStockOnly ? 'checked' : '' %>>
+        <span>In stock only</span>
+      </label>
+
+      <input type="hidden" name="sort" value="<%= sort %>">
+      <button type="submit" class="button button-secondary apply-btn">Apply filters</button>
+    </form>
+  </aside>
+
+  <section class="shop-results" aria-label="Products">
+    <div class="results-head">
+      <p class="result-count" role="status">
+        <%= result.total %> product<%= result.total === 1 ? '' : 's' %><% if (activeCategory) { %> in <%= activeCategory.name %><% } %>
+      </p>
+      <form method="get" action="/" class="sort-form">
+        <% Object.entries({ q, category, tag: tag || '', in_stock: inStockOnly ? '1' : '', min_price: minPrice !== null ? minPrice/100 : '', max_price: maxPrice !== null ? maxPrice/100 : '' }).forEach(([k, v]) => { if (v) { %>
+          <input type="hidden" name="<%= k %>" value="<%= v %>">
+        <% } }) %>
+        <label for="sort" class="sort-label">Sort by</label>
+        <select id="sort" name="sort" data-autosubmit>
+          <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>Newest</option>
+          <option value="price_asc" <%= sort === 'price_asc' ? 'selected' : '' %>>Price: low to high</option>
+          <option value="price_desc" <%= sort === 'price_desc' ? 'selected' : '' %>>Price: high to low</option>
+          <option value="name" <%= sort === 'name' ? 'selected' : '' %>>Name A–Z</option>
+          <% if (q) { %><option value="relevance" <%= sort === 'relevance' ? 'selected' : '' %>>Best match</option><% } %>
+        </select>
+        <noscript><button type="submit" class="linklike">Go</button></noscript>
+      </form>
+    </div>
+
+    <% if (result.items.length === 0) { %>
+      <div class="empty-state">
+        <h2>No results</h2>
+        <% if (hasFilters) { %>
+          <p>Nothing matched those filters. Try widening your search.</p>
+          <p><a href="/">Clear all filters</a></p>
+        <% } else { %>
+          <p>The shelves are being restocked. Check back soon.</p>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div class="product-grid">
+        <% result.items.forEach((item) => { %>
+          <%- include('/partials/product-card', { item, formatMoney }) %>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <% if (result.pageCount > 1) { %>
+      <nav class="pagination" aria-label="Pages">
+        <% if (result.page > 1) { %><a href="<%= pageUrl(result.page - 1) %>" rel="prev">← Previous</a><% } %>
+        <span class="page-status">Page <%= result.page %> of <%= result.pageCount %></span>
+        <% if (result.page < result.pageCount) { %><a href="<%= pageUrl(result.page + 1) %>" rel="next">Next →</a><% } %>
+      </nav>
+    <% } %>
+  </section>
+</div>
+
+<%- include('/partials/footer') %>
