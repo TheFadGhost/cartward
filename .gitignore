@@ -1,0 +1,33 @@
+# Runtime data — never commit
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite*
+
+# Uploaded files and captured emails
+uploads/
+emails/
+data/uploads/
+data/emails/
+
+# Secrets
+.env
+.env.*
+!.env.example
+.session-secret
+
+# Dependencies
+node_modules/
+
+# Build artifacts / caches
+dist/
+coverage/
+.nyc_output/
+*.log
+npm-debug.log*
+
+# OS noise
+Thumbs.db
+.DS_Store
