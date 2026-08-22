@@ -41,14 +41,14 @@ export function rateLimitMiddleware({ name, keyFn, limit, windowMs }) {
     res.setHeader('X-RateLimit-Remaining', String(result.remaining));
     if (!result.allowed) {
       res.setHeader('Retry-After', String(Math.ceil(result.retryAfterMs / 1000)));
-      req.rateLimited = true;
-      return res.status(429).render('error', {
-        title: 'Too many attempts',
-        message: 'Too many attempts from your side. Please wait a little while and try again.',
-        statusCode: 429,
-        user: req.user ?? null,
-        csrfToken: req.csrfToken ?? '',
-      });
+    req.rateLimited = true;
+    return res.status(429).render('error', {
+      title: 'Too many attempts',
+      message: 'Too many attempts from your side. Please wait a little while and try again.',
+      statusCode: 429,
+      user: req.user ?? null,
+      csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : '',
+    });
     }
     next();
   };

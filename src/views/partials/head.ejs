@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= title || 'Cartward' %> · Cartward</title>
+<script src="/js/theme.js"></script>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/storefront.css">
+</head>
+<body data-surface="storefront">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container header-row">
+    <a class="brand" href="/">Cartward</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/" <%= locals.currentPath === '/' ? 'aria-current="page"' : '' %>>Shop</a>
+      <a href="/about">About</a>
+      <div class="nav-right">
+        <% if (locals.user && !locals.pending2fa) { %>
+          <a href="/account" <%= locals.currentPath && locals.currentPath.startsWith('/account') ? 'aria-current="page"' : '' %>>Account</a>
+          <form method="post" action="/logout" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+            <button type="submit" class="linklike">Sign out</button>
+          </form>
+        <% } else if (locals.pending2fa) { %>
+          <a href="/login/challenge">Two-factor check</a>
+        <% } else { %>
+          <a href="/login" <%= locals.currentPath === '/login' ? 'aria-current="page"' : '' %>>Sign in</a>
+        <% } %>
+        <button class="theme-toggle linklike" type="button" data-theme-toggle aria-label="Toggle colour theme">Theme</button>
+      </div>
+    </nav>
+  </div>
+</header>
+<main id="main" class="container">
+<% if (locals.flash) { %>
+  <div class="flash flash-<%= locals.flash.type %>" role="status"><%= locals.flash.message %></div>
+<% } %>

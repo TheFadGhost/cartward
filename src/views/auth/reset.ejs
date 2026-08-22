@@ -1,0 +1,17 @@
+<%- include('/partials/head') %>
+<div class="auth-card">
+  <h1>Choose a new password</h1>
+  <% if (errors.password) { %><div class="form-errors" role="alert"><%= errors.password %></div><% } %>
+  <form method="post" action="/reset-password" class="stack" novalidate>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="token" value="<%= token %>">
+    <div class="field">
+      <label for="password">New password</label>
+      <input type="password" id="password" name="password" autocomplete="new-password"
+             required minlength="12" aria-describedby="password-hint">
+      <p class="hint" id="password-hint">At least 12 characters. Signing you out everywhere else — that's on purpose.</p>
+    </div>
+    <button type="submit" class="button">Update password</button>
+  </form>
+</div>
+<%- include('/partials/footer') %>

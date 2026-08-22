@@ -1,0 +1,25 @@
+<%- include('/partials/head') %>
+<div class="page-pad">
+  <h1>Your account</h1>
+  <p>Signed in as <strong><%= user.email %></strong>.</p>
+  <% if (!user.emailVerified) { %>
+    <div class="flash flash-warn" role="status">
+      Your email isn't verified yet. Check your inbox for the verification link.
+    </div>
+  <% } %>
+
+  <section aria-labelledby="security-heading">
+    <h2 id="security-heading">Security</h2>
+    <p>Two-factor authentication and session management live here once configured.</p>
+    <form method="post" action="/logout">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="button button-secondary">Sign out</button>
+    </form>
+  </section>
+
+  <section aria-labelledby="orders-heading">
+    <h2 id="orders-heading">Orders</h2>
+    <p>No orders yet. <a href="/">Have a look around the shop.</a></p>
+  </section>
+</div>
+<%- include('/partials/footer') %>

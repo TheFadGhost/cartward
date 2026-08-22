@@ -200,17 +200,24 @@ function buildTotp(secretBase32, email) {
     algorithm: 'SHA1',
     digits: 6,
     period: 30,
-    secret: otpauth.Secret.fromB32(secretBase32),
+    secret: otpauth.Secret.fromBase32(secretBase32),
   });
 }
 
 /** Generate (but do not enable) a TOTP enrollment secret for the user. */
 export function beginTotpEnrollment(user) {
-  const secret = new otpauth.Secret({ size: 20 }).b32;
+  const secret = new otpauth.Secret({ size: 20 }).base32;
   db.prepare('UPDATE users SET totp_secret_enc = ?, updated_at = ? WHERE id = ?')
     .run(encryptSecret(secret), Date.now(), user.id);
   const totp = buildTotp(secret, user.email);
   return { secret, uri: totp.toString() };
+}
+
+/**
+ * otpauth validate() returns the step delta (>= 0, so 0 is a PASS) or null.
+ */
+function totpMatches(totpInstance, token) {
+  return totpInstance.validate({ token, window: 1 }) !== null;
 }
 
 /** Confirm enrollment with a valid code; returns single-use recovery codes. */
@@ -218,7 +225,7 @@ export async function confirmTotpEnrollment(user, code) {
   const row = findUserById(user.id);
   if (!row?.totp_secret_enc) throw new AuthError('not_enrolled', 'Start two-factor setup first.');
   const secret = decryptSecret(row.totp_secret_enc);
-  if (!buildTotp(secret, row.email).validate({ token: code, window: 1 })) {
+  if (!totpMatches(buildTotp(secret, row.email), code)) {
     throw new AuthError('bad_code', 'That code is not valid. Check your authenticator and try again.');
   }
   db.prepare('UPDATE users SET totp_enabled_at = ?, updated_at = ? WHERE id = ?')
@@ -244,8 +251,7 @@ export function verifyTotpChallenge(user, code) {
   }
   const secret = decryptSecret(row.totp_secret_enc);
   if (/^\d{6}$/.test(trimmed)) {
-    const ok = buildTotp(secret, row.email).validate({ token: trimmed, window: 1 });
-    if (!ok) throw new AuthError('bad_code', 'That code is not valid. Try the next one.');
+    if (!totpMatches(buildTotp(secret, row.email), trimmed)) throw new AuthError('bad_code', 'That code is not valid. Try the next one.');
     return { viaRecoveryCode: false };
   }
   // Recovery code path — single use.

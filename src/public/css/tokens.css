@@ -1,0 +1,62 @@
+/* Cartward design tokens — themes are pure overrides of this variable set.
+   See DESIGN.md for the full system. */
+
+:root, [data-theme="light"] {
+  --paper: #faf7f2;
+  --surface: #ffffff;
+  --surface-sunken: #f3eee6;
+  --ink: #1f1b16;
+  --ink-muted: #63594c;
+  --line: #e4ddd2;
+  --line-strong: #c9bfae;
+
+  --accent: #3f5a3c;
+  --accent-hover: #34492f;
+  --accent-ink: #ffffff;
+
+  --danger: #a13333;        --danger-bg: #fbeeee;
+  --warn: #8a5a12;          --warn-bg: #fdf3e0;
+  --success: #2f6a3f;       --success-bg: #ecf5ee;
+  --info: #3d5a66;          --info-bg: #eaf1f3;
+
+  --focus-ring: #2d4a8a;
+}
+
+[data-theme="dark"] {
+  --paper: #171512;
+  --surface: #201d19;
+  --surface-sunken: #191713;
+  --ink: #ede7dc;
+  --ink-muted: #a89c8a;
+  --line: #37322a;
+  --line-strong: #4a4438;
+
+  --accent: #9dbb93;
+  --accent-hover: #b0cca6;
+  --accent-ink: #17200f;
+
+  --danger: #e79b9b;   --danger-bg: #3a2323;
+  --warn: #e3bc7d;     --warn-bg: #382d1a;
+  --success: #9ccaa6;  --success-bg: #1f3126;
+  --info: #a3c2cf;     --info-bg: #1d2b31;
+
+  --focus-ring: #9db8ff;
+}
+
+/* Admin high-contrast theme (used on data-surface="admin") */
+[data-surface="admin"][data-theme="contrast"] {
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --surface-sunken: #ffffff;
+  --ink: #000000;
+  --ink-muted: #333333;
+  --line: #000000;
+  --line-strong: #000000;
+  --accent: #003d99;
+  --accent-ink: #ffffff;
+  --danger: #8f0000;  --danger-bg: #ffe5e5;
+  --warn: #6d4a00;    --warn-bg: #fff3d6;
+  --success: #00552a; --success-bg: #ddf3e4;
+  --info: #003444;    --info-bg: #dcf0f6;
+  --focus-ring: #003d99;
+}

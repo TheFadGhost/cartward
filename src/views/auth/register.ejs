@@ -1,0 +1,26 @@
+<%- include('/partials/head') %>
+<div class="auth-card">
+  <h1>Create account</h1>
+  <% if (errors.form) { %><div class="form-errors" role="alert"><%= errors.form %></div><% } %>
+  <form method="post" action="/register" class="stack" novalidate>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autocomplete="email" required
+             value="<%= values.email || '' %>" aria-invalid="<%= errors.email ? 'true' : 'false' %>"
+             <%= errors.email ? `aria-describedby="email-error"` : '' %>>
+      <span class="field-error" id="email-error"><%= errors.email || '' %></span>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="new-password" required
+             minlength="12" aria-invalid="<%= errors.password ? 'true' : 'false' %>"
+             <%= errors.password ? `aria-describedby="password-error password-hint"` : 'aria-describedby="password-hint"' %>>
+      <p class="hint" id="password-hint">At least 12 characters. Long and memorable beats short and complicated.</p>
+      <span class="field-error" id="password-error"><%= errors.password || '' %></span>
+    </div>
+    <button type="submit" class="button">Create account</button>
+  </form>
+  <p class="switch">Already have an account? <a href="/login">Sign in</a></p>
+</div>
+<%- include('/partials/footer') %>

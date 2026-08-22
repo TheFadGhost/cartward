@@ -1,0 +1,21 @@
+<%- include('/partials/head') %>
+<div class="auth-card">
+  <h1>Two-factor authentication</h1>
+  <p>Enter the 6-digit code from your authenticator app, or one of your recovery codes.</p>
+  <form method="post" action="/login/challenge" class="stack" novalidate>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="code">Authentication code</label>
+      <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+             autofocus required aria-invalid="<%= errors.code ? 'true' : 'false' %>"
+             <%= errors.code ? `aria-describedby="code-error"` : '' %>>
+      <span class="field-error" id="code-error"><%= errors.code || '' %></span>
+    </div>
+    <button type="submit" class="button">Verify</button>
+  </form>
+  <form method="post" action="/logout" class="inline-form switch">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    Not you? <button type="submit" class="linklike">Cancel sign-in</button>
+  </form>
+</div>
+<%- include('/partials/footer') %>
