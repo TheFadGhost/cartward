@@ -41,7 +41,9 @@ export function csrfMiddleware(req, res, next) {
     return next();
   }
 
-  const supplied = req.body?._csrf;
+  // Multipart uploads can't carry a body field through before parsing, so
+  // their forms append the token to the action URL.
+  const supplied = req.body?._csrf ?? req.query?._csrf;
   const expected = expectedToken(req);
   if (!supplied || !expected || !timingSafeEqual(String(supplied), expected)) {
     return res.status(403).render('error', {

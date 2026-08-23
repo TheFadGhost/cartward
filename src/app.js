@@ -8,12 +8,15 @@ import { csrfMiddleware } from './middleware/csrf.js';
 import { requestLogMiddleware } from './middleware/request-log.js';
 import authRoutes from './routes/auth.js';
 import homeRoutes from './routes/home.js';
+import accountRoutes from './routes/account.js';
 import catalogRoutes from './routes/catalog.js';
 import cartRoutes from './routes/cart.js';
 import mediaRoutes from './routes/media.js';
 import checkoutRoutes from './routes/checkout.js';
 import orderRoutes from './routes/orders.js';
 import webhookRoutes from './routes/webhooks.js';
+import healthRoutes from './routes/health.js';
+import adminRoutes from './routes/admin/index.js';
 import { formatMoney } from './lib/money.js';
 import { log } from './lib/logger.js';
 import { resolveCart } from './services/cart.js';
@@ -68,6 +71,7 @@ export function createApp() {
     res.locals.currentPath = req.path;
     res.locals.config = config;
     res.locals.formatMoney = formatMoney;
+    res.locals.sessionId = req.sessionId ?? null;
     next();
   });
 
@@ -114,11 +118,14 @@ export function createApp() {
 
   app.use(mediaRoutes);
   app.use(homeRoutes);
+  app.use(accountRoutes);
   app.use(authRoutes);
   app.use(catalogRoutes);
   app.use(cartRoutes);
   app.use(checkoutRoutes);
   app.use(orderRoutes);
+  app.use(adminRoutes);
+  app.use(healthRoutes);
 
   // 404
   app.use((req, res) => {

@@ -1,0 +1,16 @@
+<%- include('/partials/admin-head') %>
+
+<h1>Captured emails</h1>
+<p class="hint">Development capture provider: every message the app "sends" is written to disk here instead of being delivered. No real mail ever leaves this machine.</p>
+<% rows.forEach((m) => { %>
+  <details class="box">
+    <summary><strong><%= m.subject %></strong> — to <%= m.to_email %> · <%= new Date(m.sent_at).toLocaleString('en-US') %></summary>
+    <details style="margin-left:16px;">
+      <summary>Raw message source</summary>
+      <pre style="white-space: pre-wrap; font-size: 11.5px; background: var(--surface-sunken); padding: 10px; border-radius: 4px; overflow-x: auto;"><%= m.preview %></pre>
+    </details>
+  </details>
+<% }) %>
+<% if (rows.length === 0) { %><p>No captured email yet. Place an order or register a user.</p><% } %>
+
+<%- include('/partials/admin-foot') %>

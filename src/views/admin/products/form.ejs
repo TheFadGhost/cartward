@@ -1,0 +1,138 @@
+<%- include('/partials/admin-head') %>
+
+<h1><%= title %></h1>
+
+<% if (errors && Object.keys(errors).length) { %>
+  <div class="form-errors" role="alert">Please fix the highlighted fields.</div>
+<% } %>
+
+<form method="post" action="<%= product ? '/admin/products/' + product.id : '/admin/products/new' %>" class="stack">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="field">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" value="<%= values.name ?? (product ? product.name : '') %>"
+           aria-invalid="<%= errors.name ? 'true' : 'false' %>">
+    <span class="field-error"><%= errors.name || '' %></span>
+  </div>
+  <div class="field">
+    <label for="category_id">Category</label>
+    <select id="category_id" name="category_id">
+      <option value="">Choose…</option>
+      <% categories.forEach((c) => { %>
+        <option value="<%= c.id %>" <%= (values.category_id ?? (product ? product.category_id : '')) === c.id ? 'selected' : '' %>><%= c.name %></option>
+      <% }) %>
+    </select>
+    <span class="field-error"><%= errors.category_id || '' %></span>
+  </div>
+  <% const currentBrand = values.brand ?? (product ? product.brandName : ''); %>
+  <div class="field">
+    <label for="brand_new">Brand</label>
+    <input type="text" id="brand_new" name="brand_new" list="brand-list" value="<%= currentBrand %>" placeholder="Leave to keep, or type a new one">
+    <datalist id="brand-list">
+      <% brands.forEach((b) => { %><option value="<%= b.name %>"><% }) %>
+    </datalist>
+  </div>
+  <div class="field">
+    <label for="tags">Tags (comma-separated)</label>
+    <input type="text" id="tags" name="tags" value="<%= values.tags ?? locals.tagStr ?? '' %>">
+    <p class="hint">Comma-separated, e.g. handmade, oak</p>
+  </div>
+  <div class="field">
+    <label for="description">Description</label>
+    <textarea id="description" name="description"><%= values.description ?? (product ? product.description : '') %></textarea>
+  </div>
+  <div class="field">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <% ['draft','active','archived'].forEach((s) => { %>
+        <option value="<%= s %>" <%= (values.status ?? (product ? product.status : 'draft')) === s ? 'selected' : '' %>><%= s %></option>
+      <% }) %>
+    </select>
+  </div>
+  <button type="submit" class="button">Save product</button>
+</form>
+
+<% if (product) { %>
+  <h2>Variants</h2>
+  <table class="data variant-editor">
+    <thead><tr><th scope="col">SKU</th><th scope="col">Size</th><th scope="col">Colour</th><th scope="col" class="num">Price</th><th scope="col" class="num">Stock</th><th scope="col" class="num">Reserved</th><th scope="col" class="num">Available</th><th scope="col">Backorder</th><th scope="col"></th></tr></thead>
+    <tbody>
+      <% variants.forEach((v) => { %>
+        <tr>
+          <td><%= v.sku %></td>
+          <td><%= v.option_size || '—' %></td>
+          <td><%= v.option_colour || '—' %></td>
+          <td class="num"><%= formatMoney(v.price_cents) %></td>
+          <td class="num"><%= v.stock %></td>
+          <td class="num"><%= v.reserved %></td>
+          <td class="num"><%= v.available %></td>
+          <td><%= v.backorderable ? 'yes' : 'no' %></td>
+          <td>
+            <details class="box">
+              <summary>Adjust stock</summary>
+              <form method="post" action="/admin/variants/<%= v.id %>/adjust" class="stack">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div class="field">
+                  <label>Delta (+/-)</label>
+                  <input type="number" name="delta" value="-1" step="1">
+                </div>
+                <div class="field">
+                  <label>Reason (required, audited)</label>
+                  <input type="text" name="reason" placeholder="e.g. damaged in transit">
+                </div>
+                <button type="submit" class="button button-secondary">Apply adjustment</button>
+              </form>
+              <form method="post" action="/admin/variants/<%= v.id %>/delete">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="button button-danger">Delete variant</button>
+              </form>
+            </details>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <details class="box">
+    <summary>Add a variant</summary>
+    <form method="post" action="/admin/products/<%= product.id %>/variants" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field"><label for="opt-size">Size (optional)</label><input type="text" id="opt-size" name="option_size" placeholder="Medium"></div>
+      <div class="field"><label for="opt-colour">Colour (optional)</label><input type="text" id="opt-colour" name="option_colour" placeholder="Moss"></div>
+      <div class="field"><label for="opt-price">Price ($)</label><input type="text" id="opt-price" name="price" inputmode="decimal" placeholder="24.99" required></div>
+      <div class="field"><label for="opt-stock">Stock on hand</label><input type="number" id="opt-stock" name="stock" value="0" min="0"></div>
+      <div class="field"><label><input type="checkbox" name="backorderable"> Allow backorder when stock is zero</label></div>
+      <button type="submit" class="button">Add variant</button>
+    </form>
+  </details>
+
+  <h2>Images</h2>
+  <div class="img-grid">
+    <% images.forEach((img) => { %>
+      <div class="img-cell">
+        <img src="/media/products/<%= img.filename %>" alt="<%= img.alt_text %>">
+        <p class="hint"><%= img.alt_text %></p>
+        <form method="post" action="/admin/images/<%= img.id %>/delete?_csrf=<%= encodeURIComponent(csrfToken) %>">
+          <button type="submit" class="linklike">Remove</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+
+  <details class="box">
+    <summary>Upload an image</summary>
+    <form method="post" action="/admin/products/<%= product.id %>/images?_csrf=<%= encodeURIComponent(csrfToken) %>" enctype="multipart/form-data" class="stack">
+      <div class="field">
+        <label for="img-file">Image file (PNG, JPEG, WebP or SVG — max 5 MB)</label>
+        <input type="file" id="img-file" name="image" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" required>
+      </div>
+      <div class="field">
+        <label for="img-alt">Alt text (describe the image for screen readers)</label>
+        <input type="text" id="img-alt" name="alt" placeholder="<%= product.name %> — illustration">
+      </div>
+      <button type="submit" class="button">Upload</button>
+    </form>
+  </details>
+<% } %>
+
+<%- include('/partials/admin-foot') %>

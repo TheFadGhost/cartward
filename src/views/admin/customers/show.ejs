@@ -1,0 +1,34 @@
+<%- include('/partials/admin-head') %>
+
+<p><a href="/admin/customers" class="muted-link">← All customers</a></p>
+<h1><%= customer.email %></h1>
+
+<div class="grid-2">
+  <section>
+    <h2 style="margin-top:0;">Account</h2>
+    <p>Joined <%= new Date(customer.created_at).toLocaleDateString('en-US') %><br>
+       Email verified: <%= customer.email_verified_at ? 'yes' : 'no' %><br>
+       Two-factor: <%= customer.totp_enabled_at ? 'enabled' : 'disabled' %></p>
+  </section>
+  <section>
+    <h2 style="margin-top:0;">Orders (<%= orders.length %>)</h2>
+    <% if (orders.length === 0) { %>
+      <p>No orders yet.</p>
+    <% } else { %>
+      <table class="data">
+        <thead><tr><th scope="col">Order</th><th scope="col">Status</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody>
+          <% orders.forEach((o) => { %>
+            <tr>
+              <td><a href="/admin/orders/<%= o.id %>"><%= o.number %></a></td>
+              <td><span class="pill pill-<%= o.status %>"><%= o.status %></span></td>
+              <td class="num"><%= formatMoney(o.total_cents) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
+
+<%- include('/partials/admin-foot') %>

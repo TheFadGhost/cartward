@@ -1,0 +1,95 @@
+<%- include('/partials/admin-head') %>
+
+<p><a href="/admin/orders" class="muted-link">← All orders</a></p>
+<h1>Order <%= order.number %> <span class="pill pill-<%= order.status %>" style="vertical-align: middle;"><%= order.status %></span></h1>
+
+<div class="grid-2">
+  <section>
+    <table class="data">
+      <thead><tr><th scope="col">Item</th><th scope="col" class="num">Price</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Total</th></tr></thead>
+      <tbody>
+        <% lines.forEach((l) => { %>
+          <tr>
+            <td class="wrap"><%= l.product_name %> <span style="color:var(--ink-muted);"><%= l.variant_label !== 'Standard' ? l.variant_label : '' %> · <%= l.sku %></span></td>
+            <td class="num"><%= formatMoney(l.unit_price_cents) %></td>
+            <td class="num"><%= l.quantity %></td>
+            <td class="num"><%= formatMoney(l.line_total_cents) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <dl class="totals-list">
+      <div><dt>Subtotal</dt><dd><%= formatMoney(order.subtotal_cents) %></dd></div>
+      <% if (order.discount_cents > 0) { %><div><dt>Discount</dt><dd>−<%= formatMoney(order.discount_cents) %></dd></div><% } %>
+      <div><dt>Shipping</dt><dd><%= formatMoney(order.shipping_cents) %></dd></div>
+      <div><dt>Tax</dt><dd><%= formatMoney(order.tax_cents) %></dd></div>
+      <div class="grand"><dt>Total</dt><dd><%= formatMoney(order.total_cents) %></dd></div>
+      <% if (order.refund_total_cents > 0) { %><div><dt>Refunded</dt><dd>−<%= formatMoney(order.refund_total_cents) %></dd></div><% } %>
+    </dl>
+  </section>
+
+  <section>
+    <h2 style="margin-top:0;">Customer &amp; delivery</h2>
+    <% const addr = JSON.parse(order.shipping_address_json); const email = locals.userEmail || order.guest_email || addr.email; %>
+    <p>
+      <%= addr.name %><br>
+      <%= addr.line1 %><%= addr.line2 ? ', ' + addr.line2 : '' %><br>
+      <%= addr.city %>, <%= addr.region %> <%= addr.postal_code %>, US<br>
+      <a href="/admin/customers?q=<%= encodeURIComponent(email) %>"><%= email %></a>
+    </p>
+
+    <h2>Payment</h2>
+    <% if (payment) { %>
+      <p>Status: <strong><%= payment.status %></strong>
+      <% if (payment.failure_reason) { %> (<%= payment.failure_reason %>)<% } %><br>
+      Amount: <%= formatMoney(payment.amount_cents) %><% if (payment.refunded_cents > 0) { %> · refunded <%= formatMoney(payment.refunded_cents) %><% } %></p>
+    <% } else { %>
+      <p>No payment attempt yet.</p>
+    <% } %>
+
+    <h2>Actions</h2>
+    <form method="post" action="/admin/orders/<%= order.id %>/transition" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="to_status">Move status to (validated by the state machine)</label>
+        <select id="to_status" name="to_status">
+          <% ['paid','fulfilled','shipped','cancelled','refunded'].forEach((s) => { %>
+            <option value="<%= s %>"><%= s %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="field">
+        <label for="note">Note (goes on the order timeline)</label>
+        <input type="text" id="note" name="note" maxlength="300">
+      </div>
+      <button type="submit" class="button button-secondary">Apply transition</button>
+    </form>
+    <form method="post" action="/admin/orders/<%= order.id %>/refund" style="margin-top:10px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="button button-danger"
+              <%= payment && payment.status === 'succeeded' ? '' : 'disabled aria-disabled="true" title="No settled payment to refund"' %>>Request full refund</button>
+      <p class="hint">Completes asynchronously when the processor confirms by webhook. Stock returns to the shelf.</p>
+    </form>
+  </section>
+</div>
+
+<h2>Timeline</h2>
+<ul class="timeline">
+  <% events.forEach((ev) => { %>
+    <li>
+      <time><%= new Date(ev.created_at).toLocaleString('en-US') %></time>
+      <span>
+        <% if (ev.type === 'state_change') { %>
+          <strong><%= ev.from_status %></strong> → <strong><%= ev.to_status %></strong>
+          <% if (ev.detail) { %> — <%= ev.detail %><% } %>
+          <span style="color:var(--ink-muted);"><%= ev.actor %></span>
+        <% } else { %>
+          <%= ev.type %>: <%= ev.detail || '' %>
+        <% } %>
+      </span>
+    </li>
+  <% }) %>
+</ul>
+
+<%- include('/partials/admin-foot') %>

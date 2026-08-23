@@ -75,10 +75,19 @@ export function requireUser(req, res, next) {
   return res.redirect('/login');
 }
 
-/** Guard: admin role checked server-side on every request, never by hiding UI. */
+/** Guard: admin role checked server-side on every request, never by hiding UI.
+ *  Anonymous or pending users go to login; authenticated non-admins get 403. */
 export function requireAdmin(req, res, next) {
-  if (!req.user || req.pending2fa || req.user.role !== 'admin') {
+  if (!req.user || req.pending2fa) {
     return res.status(303).redirect('/login');
+  }
+  if (req.user.role !== 'admin') {
+    return res.status(403).render('error', {
+      title: 'Forbidden',
+      message: 'This area is restricted to shop operators.',
+      statusCode: 403,
+      user: req.user,
+    });
   }
   return next();
 }

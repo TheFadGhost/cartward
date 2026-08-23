@@ -1,0 +1,27 @@
+<%- include('/partials/admin-head') %>
+
+<h1>Customers</h1>
+<form method="get" action="/admin/customers" class="admin-toolbar">
+  <input type="search" name="q" value="<%= q %>" placeholder="Search by email ( / )" aria-label="Search customers">
+  <button type="submit" class="button button-secondary">Filter</button>
+  <span class="result-count"><%= rows.length %> shown</span>
+</form>
+
+<table class="data">
+  <thead><tr><th scope="col">Email</th><th scope="col">Joined</th><th scope="col">Email verified</th><th scope="col">2FA</th><th scope="col" class="num">Orders</th><th scope="col" class="num">Spent</th></tr></thead>
+  <tbody>
+    <% rows.forEach((c) => { %>
+      <tr>
+        <td><a href="/admin/customers/<%= c.id %>"><%= c.email %></a></td>
+        <td><%= new Date(c.created_at).toLocaleDateString('en-US') %></td>
+        <td><%= c.email_verified_at ? 'yes' : 'no' %></td>
+        <td><%= c.totp_enabled_at ? 'on' : 'off' %></td>
+        <td class="num"><%= c.order_count %></td>
+        <td class="num"><%= formatMoney(c.spent_cents) %></td>
+      </tr>
+    <% }) %>
+    <% if (rows.length === 0) { %><tr><td colspan="6">No customers match.</td></tr><% } %>
+  </tbody>
+</table>
+
+<%- include('/partials/admin-foot') %>

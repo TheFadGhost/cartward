@@ -1,0 +1,40 @@
+<%- include('/partials/admin-head') %>
+
+<h1>Orders</h1>
+<form method="get" action="/admin/orders" class="admin-toolbar">
+  <input type="search" name="q" value="<%= q %>" placeholder="Number, email, address… ( / )" aria-label="Search orders">
+  <select name="status" aria-label="Filter by status">
+    <option value="">Any status</option>
+    <% ['pending','paid','fulfilled','shipped','cancelled','refunded'].forEach((s) => { %>
+      <option value="<%= s %>" <%= status === s ? 'selected' : '' %>><%= s %></option>
+    <% }) %>
+  </select>
+  <button type="submit" class="button button-secondary">Filter</button>
+  <a class="button button-secondary" href="/admin/orders.csv<%= status ? '?status=' + status : '' %>"
+     download>Export CSV</a>
+  <span class="result-count"><%= rows.length %> shown</span>
+</form>
+
+<table class="data">
+  <thead><tr>
+    <th scope="col"><a href="?q=<%= encodeURIComponent(q) %>&status=<%= status || '' %>" aria-label="Sort by order number">Order</a></th>
+    <th scope="col">Placed</th>
+    <th scope="col">Customer</th>
+    <th scope="col">Status</th>
+    <th scope="col" class="num"><a href="?q=<%= encodeURIComponent(q) %>&status=<%= status || '' %>&sort=total&direction=desc" aria-label="Sort by total, highest first">Total ↓</a></th>
+  </tr></thead>
+  <tbody>
+    <% rows.forEach((o) => { %>
+      <tr>
+        <td><a href="/admin/orders/<%= o.id %>"><%= o.number %></a></td>
+        <td><%= new Date(o.placed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></td>
+        <td><%= o.user_email || o.guest_email || '—' %></td>
+        <td><span class="pill pill-<%= o.status %>"><%= o.status %></span></td>
+        <td class="num"><%= formatMoney(o.total_cents) %></td>
+      </tr>
+    <% }) %>
+    <% if (rows.length === 0) { %><tr><td colspan="5">No orders match.</td></tr><% } %>
+  </tbody>
+</table>
+
+<%- include('/partials/admin-foot') %>

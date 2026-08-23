@@ -76,4 +76,12 @@ router.get('/about', (req, res) => {
   res.render('about', { title: 'About' });
 });
 
+router.get('/shipping-returns', (req, res) => {
+  res.render('shipping-returns', { title: 'Shipping & returns' });
+});
+
+router.get('/contact', (req, res) => {
+  res.render('contact', { title: 'Contact' });
+});
+
 export default router;

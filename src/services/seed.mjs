@@ -12,7 +12,7 @@ const { newId } = await import('../lib/tokens.js');
 const { hashPassword } = await import('./auth.js');
 
 // ---------------------------------------------------------------------------
-// Synthetic reference data — all names, brands and addresses are fictional.
+// Synthetic reference data â€” all names, brands and addresses are fictional.
 // ---------------------------------------------------------------------------
 
 const BRANDS = ['Ardent Forge', 'Mossline', 'Tidal & Timber', 'Fenwick Goods', 'Lumen Yard', 'Copperleaf Studio', 'Driftwell Supply', 'Harrow Lane'];
@@ -88,7 +88,7 @@ const OPENERS = [
 ];
 const CLOSERS = [
   'Ships flat-packed where sensible to cut packaging waste.',
-  'Each piece varies slightly — that is the point.',
+  'Each piece varies slightly â€” that is the point.',
   'Care instructions included; questions welcome.',
   'If it ever fails through ordinary use, we want to hear about it.',
 ];
@@ -175,7 +175,7 @@ export async function seed({ fresh = false } = {}) {
       INSERT INTO products (id, brand_id, category_id, name, slug, description, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
     `).run(productId, brandIds[brandIdx], categoryIds[catIdx], name, uniqueSlug(name, 'products'),
-      `${OPENERS[Math.floor(rand() * OPENERS.length)]} The ${name.toLowerCase()} is made by ${BRANDS[brandIdx]} — fictional makers, real attention to detail.\n\n${CLOSERS[Math.floor(rand() * CLOSERS.length)]}`,
+      `${OPENERS[Math.floor(rand() * OPENERS.length)]} The ${name.toLowerCase()} is made by ${BRANDS[brandIdx]} â€” fictional makers, real attention to detail.\n\n${CLOSERS[Math.floor(rand() * CLOSERS.length)]}`,
       now - Math.floor(rand() * 120 * 24 * 3600 * 1000), now);
 
     for (const ti of tagIdxs) {
@@ -215,7 +215,7 @@ export async function seed({ fresh = false } = {}) {
       const filename = `${imageId}.svg`;
       fs.writeFileSync(path.join(uploadProductDir, filename), generateProductSvg(`${productId}:${i}`, 800));
       insertImage.run(imageId, productId, filename,
-        `${name} by ${BRANDS[brandIdx]} — illustration ${i + 1}`, 800, 800, i, now);
+        `${name} by ${BRANDS[brandIdx]} â€” illustration ${i + 1}`, 800, 800, i, now);
     }
   }
 
@@ -235,6 +235,126 @@ export async function seed({ fresh = false } = {}) {
   insertDiscount.run(newId(), 'WELCOME10', 'percent', 10, 2500, Date.now() - 86_400_000, null, 1);
   insertDiscount.run(newId(), 'TAKE5OFF', 'fixed', 500, 3000, Date.now() - 86_400_000, null, 1);
   insertDiscount.run(newId(), 'EXPIRED2024', 'percent', 15, 0, Date.now() - 730 * 86_400_000, Date.now() - 365 * 86_400_000, 1);
+
+  // Order history: a realistic spread of statuses so every admin screen and
+  // the dashboard have something honest to show. All synthetic.
+  const day = 24 * 60 * 60 * 1000;
+  const customers = [
+    { email: 'casey@example.test' },
+    { email: 'riley@example.test' },
+    { email: 'avery@example.test', password: 'avery-cart-demo-pass' },
+    { email: 'jordan@example.test', password: 'jordan-cart-demo-pass' },
+  ];
+  for (const c of customers.slice(2)) {
+    if (!db.prepare('SELECT id FROM users WHERE email = ?').get(c.email)) {
+      await createUserRow(c.email, c.password, 'customer');
+    }
+  }
+  const userIdByEmail = (email) => db.prepare('SELECT id FROM users WHERE email = ?').get(email).id;
+
+  const pickVariant = () => {
+    const row = db.prepare(`
+      SELECT v.id, v.price_cents FROM variants v JOIN products p ON p.id = v.product_id
+      WHERE p.status='active' AND v.stock >= 30 LIMIT 1 OFFSET ABS(RANDOM()) % 12
+    `).get();
+    return row ?? db.prepare(`
+      SELECT v.id, v.price_cents FROM variants v JOIN products p ON p.id = v.product_id
+      WHERE p.status='active' AND v.stock >= 10 LIMIT 1
+    `).get();
+  };
+
+  const SCENARIOS = [
+    // [customerEmail, daysAgo, status, lines]
+    ['casey@example.test', 26, 'shipped', 2],
+    ['riley@example.test', 22, 'paid', 1],
+    ['casey@example.test', 18, 'fulfilled', 3],
+    ['avery@example.test', 15, 'refunded', 1],
+    ['jordan@example.test', 11, 'shipped', 1],
+    ['riley@example.test', 8, 'refunded', 2],
+    ['casey@example.test', 5, 'paid', 1],
+    ['avery@example.test', 3, 'cancelled', 1],
+    ['jordan@example.test', 1, 'pending', 1],   // stuck: awaiting payment
+    ['casey@example.test', 0, 'pending', 2],
+  ];
+
+  const insertSeedOrder = db.prepare(`
+    INSERT INTO orders (id, number, user_id, guest_email, status,
+      subtotal_cents, discount_cents, shipping_cents, tax_cents, total_cents, refund_total_cents,
+      currency, shipping_method, shipping_address_json, placed_at, updated_at, closed_at)
+    VALUES (?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, 'USD', 'standard', ?, ?, ?, ?)
+  `);
+  const insertSeedLine = db.prepare(`
+    INSERT INTO order_lines (id, order_id, variant_id, product_name, variant_label, sku, quantity, unit_price_cents, line_total_cents)
+    VALUES (?, ?, ?, ?, 'Standard', ?, ?, ?, ?)
+  `);
+  const insertEvent = db.prepare(`
+    INSERT INTO order_events (id, order_id, type, from_status, to_status, detail, actor, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  let seedOrderSeq = 100;
+  const ADDRESS = {
+    name: 'Demo Customer', line1: '900 Example Avenue', line2: '',
+    city: 'Springfield', region: 'OR', postal_code: '97035', country: 'US',
+  };
+  for (const [email, daysAgo, status, lineCount] of SCENARIOS) {
+    const orderId = newId();
+    const placedAt = Date.now() - daysAgo * day - Math.floor(Math.random() * 6) * 3600 * 1000;
+    const method = 'standard';
+    let subtotal = 0;
+    const chosen = [];
+    for (let i = 0; i < lineCount; i++) {
+      const v = pickVariant();
+      chosen.push(v);
+      subtotal += v.price_cents;
+    }
+    const shippingCents = subtotal >= 7500 ? 0 : 495;
+    const tax = 0; // Oregon address in seed data â€” no sales tax
+    const total = subtotal + shippingCents + tax;
+    const closedAt = ['cancelled', 'refunded'].includes(status) ? placedAt + 2 * day : null;
+
+    insertSeedOrder.run(orderId, `CW-S${String(seedOrderSeq++).padStart(7, '0')}`,
+      userIdByEmail(email), status, subtotal, shippingCents, tax, total,
+      status === 'refunded' ? total : 0,
+      JSON.stringify({ ...ADDRESS, email }), placedAt,
+      closedAt ?? placedAt + day, closedAt);
+
+    for (const v of chosen) {
+      const info = db.prepare(`
+        SELECT p.name, v.sku FROM variants v JOIN products p ON p.id = v.product_id WHERE v.id = ?
+      `).get(v.id);
+      insertSeedLine.run(newId(), orderId, v.id, info.name, info.sku, 1, v.price_cents, v.price_cents);
+    }
+
+    // Pending orders hold stock like real checkouts do.
+    if (status === 'pending') {
+      for (const v of chosen) {
+        db.prepare('UPDATE variants SET reserved = reserved + 1 WHERE id = ? AND stock - reserved >= 1').run(v.id);
+        db.prepare(`
+          INSERT INTO reservations (id, order_id, variant_id, quantity, status, expires_at, created_at, updated_at)
+          VALUES (?, ?, ?, 1, 'held', ?, ?, ?)
+        `).run(newId(), orderId, v.id, placedAt + 15 * 60 * 1000, placedAt, placedAt);
+      }
+    }
+
+    insertEvent.run(newId(), orderId, 'order_placed', null, null, 'Order placed.', 'customer', placedAt);
+    const chain = {
+      paid: [['state_change', null, 'paid', 'Payment settled.', 'system']],
+      fulfilled: [['state_change', null, 'paid', 'Payment settled.', 'system'], ['state_change', 'paid', 'fulfilled', 'Packed for dispatch.', 'admin']],
+      shipped: [['state_change', null, 'paid', 'Payment settled.', 'system'], ['state_change', 'paid', 'fulfilled', 'Packed for dispatch.', 'admin'], ['state_change', 'fulfilled', 'shipped', 'Handed to the carrier.', 'admin']],
+      refunded: [['state_change', null, 'paid', 'Payment settled.', 'system'], ['state_change', 'paid', 'refunded', 'Customer returned the item; refund confirmed by processor.', 'admin']],
+      cancelled: [['state_change', null, 'cancelled', 'Cancelled by the customer before payment completed.', 'customer']],
+      pending: [],
+    }[status];
+    let t = placedAt;
+    for (const [, from, to, detail, actor] of chain) {
+      t += Math.floor(Math.random() * 2 + 1) * 3600 * 1000;
+      insertEvent.run(newId(), orderId, 'state_change', from, to, detail, actor, Math.min(t, Date.now()));
+    }
+    if (status === 'pending') {
+      insertEvent.run(newId(), orderId, 'payment_awaiting', null, null, 'Checkout not completed yet â€” this is where stuck orders wait.', 'system', placedAt + 3600 * 1000);
+    }
+  }
+  console.log(`[seed] ${SCENARIOS.length} historical orders across all statuses`);
 
   console.log(`[seed] ${CATALOGUE.length} products, ${BRANDS.length} brands, ${CATEGORIES.length} categories`);
   console.log(`[seed] admin account: ${adminEmail} (change the password after first login)`);

@@ -1,0 +1,84 @@
+<%- include('/partials/admin-head') %>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <p class="label">Orders (30d, non-pending)</p>
+    <p class="value"><%= series.reduce((n, d) => n + d.orders, 0) %></p>
+    <p class="sub"><%= pending %> pending right now</p>
+  </div>
+  <div class="stat-card">
+    <p class="label">Revenue (net of refunds)</p>
+    <p class="value"><%= formatMoney(totals.gross_cents - totals.refunded_cents) %></p>
+    <p class="sub">cancelled orders excluded</p>
+  </div>
+  <div class="stat-card">
+    <p class="label">Refunded (all time)</p>
+    <p class="value"><%= formatMoney(totals.refunded_cents) %></p>
+  </div>
+  <div class="stat-card">
+    <p class="label">Order value p50 / p95</p>
+    <p class="value"><%= formatMoney(p50) %> / <%= formatMoney(p95) %></p>
+    <p class="sub">trailing 30 days, n = <%= orderCount %></p>
+  </div>
+</div>
+
+<div class="chart-wrap">
+  <h2 style="margin-top:0;">Orders per day — trailing 30 days</h2>
+  <% const maxOrders = Math.max(1, ...series.map(d => d.orders)); %>
+  <svg viewBox="0 0 900 180" role="img" aria-label="Bar chart of orders per day for the last 30 days">
+    <!-- accessible data table alternative follows the chart -->
+    <% series.forEach((d, i) => { const h = Math.round((d.orders / maxOrders) * 130); const x = i * 30 + 5; %>
+      <rect x="<%= x %>" y="<%= 150 - h %>" width="22" height="<%= Math.max(h, d.orders > 0 ? 3 : 1) %>"
+            fill="currentColor" opacity="0.85" role="presentation"></rect>
+      <% if (i % 7 === 0) { %>
+        <text x="<%= x %>" y="168" font-size="10" fill="var(--ink-muted)"><%= d.day.slice(5) %></text>
+      <% } %>
+    <% }) %>
+    <line x1="0" y1="150.5" x2="900" y2="150.5" stroke="var(--line-strong)" stroke-width="1"/>
+  </svg>
+  <details class="box">
+    <summary>Data table</summary>
+    <table class="data">
+      <caption class="visually-hidden">Orders per day</caption>
+      <thead><tr><th scope="col">Day</th><th scope="col" class="num">Orders</th><th scope="col" class="num">Revenue</th></tr></thead>
+      <tbody>
+        <% series.filter(d => d.orders > 0).forEach((d) => { %>
+          <tr><td><%= d.day %></td><td class="num"><%= d.orders %></td><td class="num"><%= formatMoney(d.revenueCents) %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </details>
+  <p class="chart-note">Revenue convention: order total minus refunds; cancelled and still-pending orders excluded.</p>
+</div>
+
+<div class="grid-2">
+  <section>
+    <h2>Low or out of stock</h2>
+    <table class="data">
+      <thead><tr><th scope="col">Product</th><th scope="col">Variant</th><th scope="col" class="num">Available</th><th scope="col">State</th></tr></thead>
+      <tbody>
+        <% lowStock.forEach((v) => { const label = [v.option_size, v.option_colour].filter(Boolean).join(' / '); %>
+          <tr>
+            <td class="wrap"><%= v.name %></td>
+            <td><%= label || '—' %></td>
+            <td class="num"><%= v.available %></td>
+            <td><% if (v.available <= 0 && !v.backorderable) { %><span class="pill pill-cancelled">Out of stock</span><% } else if (v.available <= 0) { %><span class="pill pill-fulfilled">Backorderable</span><% } else { %><span class="pill pill-draft">Low</span><% } %></td>
+          </tr>
+        <% }) %>
+        <% if (lowStock.length === 0) { %><tr><td colspan="4">Everything is comfortably stocked.</td></tr><% } %>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Latest activity</h2>
+    <ul class="timeline">
+      <% recentAudit.forEach((a) => { %>
+        <li><time><%= new Date(a.created_at).toLocaleString('en-US') %></time><span><%= a.action %> <span style="color: var(--ink-muted);"><%= a.entity_type || '' %> <%= a.entity_id ? a.entity_id.slice(0, 8) : '' %></span></span></li>
+      <% }) %>
+      <% if (recentAudit.length === 0) { %><li>No admin activity recorded yet.</li><% } %>
+    </ul>
+    <p><a href="/admin/audit-log" class="muted-link">Full audit log →</a></p>
+  </section>
+</div>
+
+<%- include('/partials/admin-foot') %>

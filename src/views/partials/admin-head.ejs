@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= title || 'Admin' %> · Cartward Admin</title>
+<script src="/js/theme.js"></script>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body data-surface="admin" data-theme-allow="light,dark,contrast">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="admin-shell">
+  <aside class="admin-nav" aria-label="Admin navigation">
+    <p class="admin-brand">Cartward <span>admin</span></p>
+    <nav>
+      <a href="/admin" <%= locals.currentPath === '/admin' ? 'aria-current="page"' : '' %>>Dashboard</a>
+      <a href="/admin/orders" <%= (locals.currentPath||'').startsWith('/admin/orders') ? 'aria-current="page"' : '' %>>Orders</a>
+      <a href="/admin/products" <%= (locals.currentPath||'').startsWith('/admin/products') ? 'aria-current="page"' : '' %>>Products</a>
+      <a href="/admin/customers" <%= (locals.currentPath||'').startsWith('/admin/customers') ? 'aria-current="page"' : '' %>>Customers</a>
+      <a href="/admin/audit-log">Audit log</a>
+      <a href="/admin/mailbox">Mailbox</a>
+    </nav>
+    <div class="admin-nav-foot">
+      <a href="/" class="muted-link">← Storefront</a>
+      <form method="post" action="/logout">
+        <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+        <button type="submit" class="linklike">Sign out</button>
+      </form>
+      <button type="button" class="linklike" data-theme-toggle>Theme</button>
+      <button type="button" class="linklike" data-theme-toggle-contrast>High contrast</button>
+    </div>
+  </aside>
+  <main id="main" class="admin-main">
+    <% if (locals.flash) { %>
+      <div class="flash flash-<%= locals.flash.type %>" role="status"><%= locals.flash.message %></div>
+    <% } %>
+

@@ -1,0 +1,70 @@
+<%- include('/partials/head') %>
+<div class="page-pad narrow">
+  <h1>Security</h1>
+
+  <section aria-labelledby="twofa-heading" class="review-block">
+    <h2 id="twofa-heading">Two-factor authentication</h2>
+    <% if (totp.totp_enabled_at) { %>
+      <p>Two-factor is <strong>on</strong> for this account.</p>
+      <form method="post" action="/account/security/totp/disable" class="stack">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="password">Confirm your password to turn it off</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="button button-danger">Disable two-factor</button>
+      </form>
+    <% } else if (enroll) { %>
+      <p>Add this secret to your authenticator app, then enter the current 6-digit code.</p>
+      <p><code style="word-break: break-all; background: var(--surface-sunken); padding: 8px; display: block; border-radius: 4px;"><%= enroll.secret %></code></p>
+      <p class="hint">Or use the setup link: <code style="word-break: break-all;"><%= enroll.uri %></code></p>
+      <form method="post" action="/account/security/totp/confirm" class="stack">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="code">Authenticator code</label>
+          <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+                 aria-invalid="<%= errors.code ? 'true' : 'false' %>" required>
+          <span class="field-error"><%= errors.code || '' %></span>
+        </div>
+        <button type="submit" class="button">Confirm and enable</button>
+      </form>
+    <% } else { %>
+      <p>Protect sign-in with a rotating code from an authenticator app.</p>
+      <form method="post" action="/account/security/totp/begin">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="button button-secondary">Set up two-factor</button>
+      </form>
+    <% } %>
+
+    <% if (recoveryCodes) { %>
+      <div class="flash flash-warn" role="alert">
+        Save these recovery codes now — each works once if you lose your authenticator,
+        and they are shown only this once.
+      </div>
+      <ul class="recovery-codes">
+        <% recoveryCodes.forEach((c) => { %><li><code><%= c %></code></li><% }) %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section aria-labelledby="sessions-heading" class="review-block">
+    <h2 id="sessions-heading">Active sessions</h2>
+    <table class="cart-table">
+      <thead><tr><th scope="col">Last seen</th><th scope="col">Signed in</th><th scope="col">From</th></tr></thead>
+      <tbody>
+        <% sessions.forEach((s) => { %>
+          <tr<% if (s.id === sessionId) { %> class="line-current"<% } %>>
+            <td><%= new Date(s.last_seen_at).toLocaleString('en-US') %></td>
+            <td><%= new Date(s.created_at).toLocaleString('en-US') %></td>
+            <td><%= s.ip || 'unknown' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <form method="post" action="/account/security/sessions/revoke-all" style="margin-top:12px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="button button-danger">Sign out everywhere</button>
+    </form>
+  </section>
+</div>
+<%- include('/partials/footer') %>

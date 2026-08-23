@@ -10,16 +10,17 @@
 
   <section aria-labelledby="security-heading">
     <h2 id="security-heading">Security</h2>
-    <p>Two-factor authentication and session management live here once configured.</p>
+    <p>Manage two-factor authentication, review active sessions and revoke access.</p>
+    <p><a class="button button-secondary" href="/account/security">Security settings</a></p>
     <form method="post" action="/logout">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="submit" class="button button-secondary">Sign out</button>
+      <button type="submit" class="linklike">Sign out</button>
     </form>
   </section>
 
   <section aria-labelledby="orders-heading">
     <h2 id="orders-heading">Orders</h2>
-    <p>No orders yet. <a href="/">Have a look around the shop.</a></p>
+    <p><a href="/orders">View your order history</a> or <a href="/">keep browsing the shop.</a></p>
   </section>
 </div>
 <%- include('/partials/footer') %>

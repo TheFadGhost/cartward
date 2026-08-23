@@ -223,6 +223,13 @@ router.post('/logout', (req, res) => {
   res.redirect('/');
 });
 
+/** After a global session revocation the current cookie is already dead. */
+router.get('/logout-confirmed', (req, res) => {
+  clearSessionCookie(res);
+  res.flash('success', 'Signed out of every device for this account. Sign in again to continue.');
+  res.redirect('/login');
+});
+
 // ---------------------------------------------------------------------------
 // Password reset
 // ---------------------------------------------------------------------------

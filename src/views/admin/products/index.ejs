@@ -1,0 +1,43 @@
+<%- include('/partials/admin-head') %>
+
+<h1>Products</h1>
+<form method="get" action="/admin/products" class="admin-toolbar">
+  <input type="search" name="q" value="<%= q %>" placeholder="Search products ( / )" aria-label="Search products">
+  <select name="status" aria-label="Filter by status">
+    <option value="">Any status</option>
+    <option value="active" <%= statusFilter === 'active' ? 'selected' : '' %>>Active</option>
+    <option value="draft" <%= statusFilter === 'draft' ? 'selected' : '' %>>Draft</option>
+    <option value="archived" <%= statusFilter === 'archived' ? 'selected' : '' %>>Archived</option>
+  </select>
+  <button type="submit" class="button button-secondary">Filter</button>
+  <a class="button" href="/admin/products/new">New product</a>
+  <span class="result-count"><%= rows.length %> shown</span>
+</form>
+
+<table class="data">
+  <thead><tr>
+    <th scope="col"></th>
+    <th scope="col">Name</th>
+    <th scope="col">Brand</th>
+    <th scope="col">Category</th>
+    <th scope="col">Status</th>
+    <th scope="col" class="num">Variants</th>
+    <th scope="col" class="num">Available</th>
+  </tr></thead>
+  <tbody>
+    <% rows.forEach((p) => { %>
+      <tr>
+        <td><% if (p.image) { %><img src="/media/products/<%= p.image %>" alt="" width="34" height="34" style="object-fit:cover;border:1px solid var(--line);background:#f3eee6;"><% } %></td>
+        <td class="wrap"><a href="/admin/products/<%= p.id %>"><%= p.name %></a></td>
+        <td><%= p.brand_name || '—' %></td>
+        <td><%= p.category_name || '—' %></td>
+        <td><span class="pill pill-<%= p.status %>"><%= p.status %></span></td>
+        <td class="num"><%= p.variant_count %></td>
+        <td class="num"><%= p.available %><% if (p.available <= 3) { %> <span class="pill pill-draft">low</span><% } %></td>
+      </tr>
+    <% }) %>
+    <% if (rows.length === 0) { %><tr><td colspan="7">No products match. Create the first one.</td></tr><% } %>
+  </tbody>
+</table>
+
+<%- include('/partials/admin-foot') %>
