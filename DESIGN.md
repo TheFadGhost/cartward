@@ -1,4 +1,4 @@
-# DESIGN.md
+﻿# DESIGN.md
 
 Cartward's design system: two surfaces with different jobs, built from one token set.
 
@@ -59,15 +59,15 @@ Roles (light values shown; each theme overrides):
 | `--danger`/`-bg` | `#a13333` / `#fbeeee` ≥4.5:1 | Errors, declined payment |
 | `--warn`/`-bg` | `#8a5a12` / `#fdf3e0` | Low stock (only when literally true), price-change notices |
 | `--success`/`-bg` | `#2f6a3f` / `#ecf5ee` | In stock, paid |
-| `--info`/`-bg` | `#3d5a66` / `#eaf1f3` | Backorder, fulfilled/shipped |
+| --info/-bg | #3d5a66 / #eaf1f3 | Backorder, shipped, gallery info states |
 
 Dark themes shift to near-black paper (`#171512`), raised surfaces, and re-tuned tints so every
-pair still clears AA. High-contrast admin theme: pure black-on-white direction, stronger borders,
-no muted greys below AA-large.
+pair still clears AA. The high-contrast admin theme (`html[data-surface="admin"][data-theme="contrast"]`)
+runs black-on-white with stronger borders and no muted greys below AA.
 
 **Deuteranopia rule:** status colour is never the sole carrier — every stock/order status renders
-as a labelled pill whose text carries the meaning ("Out of stock", "Refunded") with distinct
-lightness separation verified between states; hues are reinforcement only.
+as a labelled pill whose text carries the meaning ("Out of stock", "Refunded") with distinct hue families and lightness steps between adjacent states:
+pending=amber, paid=green pair, fulfilled=neutral, shipped=blue pair, refunded=red pair.
 
 **Product imagery on dark themes:** every product image is drawn on its own opaque warm-paper
 artboard inside a fixed frame — images are never transparent, so a white-background photo never
