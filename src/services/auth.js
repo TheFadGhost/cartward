@@ -82,6 +82,9 @@ export async function createUser({ email, password, role = 'customer', ip }) {
   }
   const pwCheck = validatePassword(password);
   if (!pwCheck.ok) throw new AuthError('weak_password', pwCheck.error);
+  if (normalized.length > 254) {
+    throw new AuthError('invalid_email', 'Enter a valid email address.');
+  }
   if (findUserByEmail(normalized)) {
     throw new AuthError('email_taken', 'An account with that email already exists.');
   }
@@ -90,6 +93,23 @@ export async function createUser({ email, password, role = 'customer', ip }) {
   insertUser.run({ id, email: normalized, passwordHash: await hashPassword(password), role, now });
   await issueEmailVerification(id);
   return findUserById(id);
+}
+
+/**
+ * Registration is enumeration-safe: when the address already exists we respond
+ * exactly as if the account were created and notify the existing owner.
+ */
+export async function handleRegistration({ email, password }) {
+  try {
+    return await createUser({ email, password });
+  } catch (err) {
+    if (err instanceof AuthError && err.code === 'email_taken') {
+      const existing = findUserByEmail(email);
+      await mailer.sendTemplate(existing.email, 'registrationAttempt', {});
+      return null; // indistinguishable response downstream
+    }
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -1,35 +1,41 @@
 window.cartwardTheme = (() => {
-  const KEY = 'cw-theme';
   const root = document.documentElement;
-  const surface = document.body?.dataset?.surface || 'storefront';
-  const storageKey = `${KEY}:${surface}`;
+  // data-surface lives on <html> so it's readable before <body> exists.
+  const surface = root.dataset.surface || 'storefront';
+  const storageKey = `cw-theme:${surface}`;
 
-  function apply(theme) {
+  function apply(theme, { persist = true } = {}) {
     root.setAttribute('data-theme', theme);
-    try { localStorage.setItem(storageKey, theme); } catch { /* private mode */ }
+    if (persist) {
+      try { localStorage.setItem(storageKey, theme); } catch { /* private mode */ }
+    }
+    document.querySelectorAll('[data-theme-toggle]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(theme === 'dark' || theme === 'contrast'));
+    });
+  }
+
+  function saved() {
+    try { return localStorage.getItem(storageKey); } catch { return null; }
   }
 
   function preferred() {
-    let saved = null;
-    try { saved = localStorage.getItem(storageKey); } catch { /* ignore */ }
-    if (saved) return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
-  apply(preferred());
+  // First visit: follow the OS preference without locking it in.
+  const stored = saved();
+  apply(stored ?? preferred(), { persist: !!stored });
+
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    let saved = null;
-    try { saved = localStorage.getItem(storageKey); } catch { /* ignore */ }
-    if (!saved) apply(preferred());
+    if (!saved()) apply(preferred(), { persist: false });
   });
 
   return {
     toggle() {
       const current = root.getAttribute('data-theme');
-      const next = ['dark', 'contrast'].includes(current) ? 'light' : 'dark';
-      apply(next);
+      apply(current === 'dark' || current === 'contrast' ? 'light' : 'dark');
     },
-    set: apply,
+    set: (t) => apply(t),
   };
 })();
 

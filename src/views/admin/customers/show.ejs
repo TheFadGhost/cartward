@@ -5,13 +5,13 @@
 
 <div class="grid-2">
   <section>
-    <h2 style="margin-top:0;">Account</h2>
+    <h2 class="mt-0">Account</h2>
     <p>Joined <%= new Date(customer.created_at).toLocaleDateString('en-US') %><br>
        Email verified: <%= customer.email_verified_at ? 'yes' : 'no' %><br>
        Two-factor: <%= customer.totp_enabled_at ? 'enabled' : 'disabled' %></p>
   </section>
   <section>
-    <h2 style="margin-top:0;">Orders (<%= orders.length %>)</h2>
+    <h2 class="mt-0">Orders (<%= orders.length %>)</h2>
     <% if (orders.length === 0) { %>
       <p>No orders yet.</p>
     <% } else { %>

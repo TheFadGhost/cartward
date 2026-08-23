@@ -10,7 +10,7 @@
         <td><%= a.actor_type %><%= a.actor_id ? ' ' + a.actor_id.slice(0, 8) : '' %></td>
         <td><strong><%= a.action %></strong></td>
         <td><%= a.entity_type || '—' %> <%= a.entity_id ? a.entity_id.slice(0, 8) : '' %></td>
-        <td class="wrap"><code style="font-size:11px;"><%= a.after_json || a.before_json || '' %></code></td>
+        <td class="wrap"><code class="tiny-code"><%= a.after_json || a.before_json || '' %></code></td>
       </tr>
     <% }) %>
     <% if (rows.length === 0) { %><tr><td colspan="5">Nothing audited yet.</td></tr><% } %>

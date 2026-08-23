@@ -14,6 +14,19 @@ function expectedToken(req) {
 }
 
 /**
+ * Time-bucketed upload ticket for multipart forms whose token can't ride in
+ * the body. Bound to the session and valid for ~10 minutes; never a
+ * long-lived secret in a URL.
+ */
+function uploadTicketValid(req) {
+  if (!req.sessionId || typeof req.query._t !== 'string') return false;
+  const bucket = Math.floor(Date.now() / (10 * 60 * 1000));
+  const candidates = [bucket, bucket - 1]
+    .map((b) => hmacHex(config.sessionSecret, `csrf-upload:${req.sessionId}:${b}`));
+  return candidates.includes(req.query._t);
+}
+
+/**
  * CSRF protection for all state-changing requests.
  * Authenticated: synchronizer token derived via HMAC from the server-side
  * session id. Guests: signed double-submit cookie (SameSite=Lax is the first
@@ -41,11 +54,12 @@ export function csrfMiddleware(req, res, next) {
     return next();
   }
 
-  // Multipart uploads can't carry a body field through before parsing, so
-  // their forms append the token to the action URL.
-  const supplied = req.body?._csrf ?? req.query?._csrf;
+  // Multipart uploads append a time-bound ticket to the action URL instead
+  // of the body token (which can't be read before parsing).
+  const supplied = req.body?._csrf;
   const expected = expectedToken(req);
-  if (!supplied || !expected || !timingSafeEqual(String(supplied), expected)) {
+  const bodyOk = supplied && expected && timingSafeEqual(String(supplied), expected);
+  if (!bodyOk && !uploadTicketValid(req)) {
     return res.status(403).render('error', {
       title: 'Request blocked',
       message: 'Your session may have expired. Go back, reload the page and try again.',

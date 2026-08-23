@@ -237,4 +237,3 @@ export function setTags(productId, names) {
   tx();
 }
 
-export default { listProducts, getProductBySlug };

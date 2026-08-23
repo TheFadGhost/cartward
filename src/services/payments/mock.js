@@ -34,7 +34,7 @@ export const TEST_CARDS = [
   { number: '4000 0000 0000 0002', behaviour: 'Declined — card declined' },
   { number: '4000 0000 0000 9995', behaviour: 'Declined — insufficient funds' },
   { number: '4000 0000 0000 0069', behaviour: 'Declined — expired card' },
-  { number: '4000 0000 0000 0010', behaviorNote: '', behaviour: 'Fails after a long pause (timeout demo)' },
+  { number: '4000 0000 0000 0010', behaviour: 'Fails after a long pause (timeout demo)' },
 ];
 
 function sanitizeCard(input) {
@@ -111,7 +111,9 @@ export const mockProvider = {
       VALUES (?, ?, 'mock', ?, ?, ?, ?, ?, ?)
     `).run(paymentId, order.id, providerRef, totalCents,
       scenario.kind === 'success' ? 'processing' : 'requires_action',
-      digits, Date.now(), Date.now());
+      // Scenario LABEL only — the card number itself is never persisted.
+      scenario.kind === 'success' ? `success:${digits.slice(-4) === '0341' || digits.slice(-4) === '0010' ? 'delayed' : 'instant'}` : scenario.reason,
+      Date.now(), Date.now());
 
     const baseData = { paymentRef: providerRef, orderId: order.id, amountCents: totalCents };
     if (scenario.kind === 'success') {
@@ -141,22 +143,34 @@ export const mockProvider = {
     };
   },
 
-  /** Issue a refund through the mock processor; confirmed via webhook. */
-  refund(providerRef, amountCents) {
+  /**
+   * Issue a refund through the mock processor; confirmed by webhook.
+   * The webhook handler is the sole writer of refunded amounts.
+   */
+  refund(providerRef) {
     const row = db.prepare('SELECT * FROM payments WHERE provider_ref = ?').get(providerRef);
     if (!row) return { ok: false, error: 'Payment not found.' };
     if (row.status !== 'succeeded') return { ok: false, error: 'Only settled payments can be refunded.' };
-    db.prepare(`UPDATE payments SET refunded_cents = MIN(amount_cents, refunded_cents + ?),
-                status = CASE WHEN refunded_cents + ? >= amount_cents THEN 'refunded' ELSE 'partially_refunded' END,
-                updated_at = ? WHERE provider_ref = ?`)
-      .run(amountCents, amountCents, Date.now(), providerRef);
+    const remaining = row.amount_cents - (row.refunded_cents ?? 0);
+    if (remaining <= 0) return { ok: false, error: 'This payment is already fully refunded.' };
     deliverWebhook(makeEvent('refund.succeeded', {
       paymentRef: providerRef,
       orderId: row.order_id,
-      amountCents,
+      amountCents: remaining,
     }), { delayMs: FAST_DELAY_MS() });
-    return { ok: true };
+    return { ok: true, amountCents: remaining };
   },
 };
 
 export default mockProvider;
+
+/** Single source of truth for human-readable failure reasons. */
+export function humanDeclineReason(reason) {
+  const labels = {
+    card_declined: 'Your card was declined.',
+    insufficient_funds: 'The card has insufficient funds.',
+    expired_card: 'The card has expired.',
+    processing_error: 'The payment could not be processed.',
+  };
+  return labels[reason] ?? 'The payment could not be processed.';
+}

@@ -2,6 +2,8 @@
 <div class="page-pad">
   <h1><%= title %></h1>
   <p><%= message %></p>
-  <% if (statusCode === 404) { %><p><a href="/">Back to the shop</a></p><% } %>
+  <% if (statusCode >= 500) { %>
+    <p><a href="<%= locals.currentPath || '/' %>">Try again</a> or <a href="/">go back to the shop</a>.</p>
+  <% } else if (statusCode === 404) { %><p><a href="/">Back to the shop</a></p><% } %>
 </div>
 <%- include('/partials/footer') %>

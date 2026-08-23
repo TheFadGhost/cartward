@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import fs from 'node:fs';
+import path from 'node:path';
+import { config } from '../config.js';
+import { log } from '../lib/logger.js';
 
 const router = Router();
 
@@ -15,10 +18,13 @@ router.get('/readyz', async (req, res) => {
     const migrations = db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n;
     if (migrations === 0) throw new Error('no migrations applied');
     db.prepare('SELECT 1').get();
-    await fs.promises.access(process.env.EMAIL_DIR || 'data/emails');
-    res.status(200).json({ ok: true, checks: { database: true, migrations, mailDir: true } });
+    await fs.promises.access(config.emailDir);
+    void path;
+    res.status(200).json({ ok: true });
   } catch (err) {
-    res.status(503).json({ ok: false, error: err.message });
+    // Details stay in logs; the public body reveals nothing about the host.
+    log.error('readiness check failed', { message: err.message });
+    res.status(503).json({ ok: false });
   }
 });
 

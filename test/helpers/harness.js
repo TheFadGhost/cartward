@@ -6,6 +6,20 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const RUN_ID = `${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
 
+// Sweep stale per-run data from earlier runs (older than 30 minutes) so the
+// data/ directory doesn't accumulate junk across sessions.
+try {
+  const dataDir = path.join(ROOT, 'data');
+  for (const entry of fs.readdirSync(dataDir)) {
+    if (!/^(test-|db|uploads-test-|emails-test-|e2e)/.test(entry)) continue;
+    const full = path.join(dataDir, entry);
+    const ageMs = Date.now() - fs.statSync(full).mtimeMs;
+    if (/^e2e/.test(entry) || ageMs > 30 * 60 * 1000) {
+      fs.rmSync(full, { recursive: true, force: true });
+    }
+  }
+} catch { /* best effort */ }
+
 // Isolated runtime data per test run. Must be set BEFORE importing src/config.js.
 process.env.NODE_ENV = 'development';
 process.env.SESSION_SECRET = `test-secret-${RUN_ID}`;

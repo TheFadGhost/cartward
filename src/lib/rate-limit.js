@@ -54,6 +54,4 @@ export function rateLimitMiddleware({ name, keyFn, limit, windowMs }) {
   };
 }
 
-export function resetRateLimits() {
-  db.prepare('DELETE FROM rate_limits').run();
-}
+

@@ -30,8 +30,6 @@ router.post('/cart/add', (req, res) => {
   }
   if (result.clamped) {
     res.flash('warn', `Quantity limited to ${result.clamped.limit} of that item — that's all the stock allows.`);
-  } else if (result.quantityInCart > Number(quantity)) {
-    // Merged into an existing line; neutral confirmation is fine.
   }
   return res.redirect('/cart');
 });

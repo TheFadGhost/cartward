@@ -33,7 +33,4 @@ for (const file of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql
   console.log(`[db] applied migration ${file}`);
 }
 
-/** Run fn inside an IMMEDIATE transaction (write lock up front). */
-export function txImmediate(fn) {
-  return db.transaction(fn).immediate();
-}
+

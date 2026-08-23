@@ -50,6 +50,15 @@ export const emailTemplates = {
       <p>If you did not request this, nothing is needed — your password is unchanged.</p>`),
     text: `We received a request to reset the password for this account.\n\nThis link works once and expires in ${minutes} minutes:\n${url}\n\nIf you did not request this, nothing is needed - your password is unchanged.\n`,
   }),
+  registrationAttempt: () => ({
+    subject: 'A new Cartward account was attempted with this email',
+    html: wrapLayout('Registration attempt', `
+      <p>Someone just tried to create a Cartward account with this email address.</p>
+      <p>An account already exists here. If that was you, sign in as usual or use
+      "Forgot your password?" from the sign-in page.</p>
+      <p>If it wasn't you, nothing is needed — your account and password are unchanged.</p>`),
+    text: 'Someone tried to create a Cartward account with this email. An account already exists here; if that was you, sign in as usual. Otherwise nothing is needed.\n',
+  }),
   orderConfirmation: ({ orderNumber, total, lines }) => {
     const rows = lines
       .map((l) => `<tr><td>${escapeHtml(l.name)} × ${l.quantity}</td><td align="right">${l.lineTotal}</td></tr>`)

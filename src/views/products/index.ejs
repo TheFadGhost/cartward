@@ -12,9 +12,12 @@
 
       <fieldset class="field filter-group">
         <legend>Category</legend>
+        <label class="choice">
+          <input type="radio" name="category" value="" <%= !category ? 'checked' : '' %>>
+          <span>All categories</span>
+        </label>
         <% categories.forEach((c) => { %>
           <label class="choice">
-            <input type="radio" name="category" value="" <%= !category ? 'checked' : '' %> class="visually-hidden-cat">
             <input type="radio" name="category" value="<%= c.slug %>" <%= category === c.slug ? 'checked' : '' %>>
             <span><%= c.name %> <span class="count"><%= c.product_count %></span></span>
           </label>

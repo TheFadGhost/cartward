@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeClient, csrfOf, paramFromEmail, db } from '../helpers/harness.js';
+import { makeClient, csrfOf, paramFromEmail, db, readCapturedEmails } from '../helpers/harness.js';
 
 let client;
 const PASSWORD = 'quiet-orchard-lantern';
@@ -33,14 +33,22 @@ describe('registration', () => {
     assert.match(res.text, /at least 12 characters/i);
   });
 
-  it('rejects duplicate email without leaking whether it exists via different message', async () => {
+  it('responds identically for duplicate email (no enumeration) and notifies the owner', async () => {
     await registerUser('dup@example.test');
     const page = await client.get('/register');
     const res = await client.post('/register', {
       email: 'dup@example.test', password: PASSWORD, _csrf: csrfOf(page),
     });
-    assert.equal(res.status, 422);
-    assert.match(res.text, /already exists/);
+    assert.equal(res.status, 302, 'duplicate registration must look successful');
+
+    const landing = await client.get(res.headers.location);
+    assert.match(landing.text, /Account created\. Check your inbox/);
+
+    const mails = readCapturedEmails('dup@example.test');
+    assert.ok(mails.some((m) => m.subject.includes('attempted')), 'existing owner notified');
+    const userCount = db
+      .prepare("SELECT COUNT(*) n FROM users WHERE email='dup@example.test'").get().n;
+    assert.equal(userCount, 1, 'no second account created');
   });
 
   it('requires CSRF token', async () => {

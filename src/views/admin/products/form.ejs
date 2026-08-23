@@ -112,7 +112,8 @@
       <div class="img-cell">
         <img src="/media/products/<%= img.filename %>" alt="<%= img.alt_text %>">
         <p class="hint"><%= img.alt_text %></p>
-        <form method="post" action="/admin/images/<%= img.id %>/delete?_csrf=<%= encodeURIComponent(csrfToken) %>">
+        <form method="post" action="/admin/images/<%= img.id %>/delete">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button type="submit" class="linklike">Remove</button>
         </form>
       </div>
@@ -121,7 +122,7 @@
 
   <details class="box">
     <summary>Upload an image</summary>
-    <form method="post" action="/admin/products/<%= product.id %>/images?_csrf=<%= encodeURIComponent(csrfToken) %>" enctype="multipart/form-data" class="stack">
+    <form method="post" action="/admin/products/<%= product.id %>/images?_t=<%= uploadTicket %>" enctype="multipart/form-data" class="stack">
       <div class="field">
         <label for="img-file">Image file (PNG, JPEG, WebP or SVG — max 5 MB)</label>
         <input type="file" id="img-file" name="image" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" required>

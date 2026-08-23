@@ -4,8 +4,7 @@ import { makeClient, listen, csrfOf, db } from '../helpers/harness.js';
 import { seed } from '../../src/services/seed.mjs';
 
 await seed({ fresh: true });
-const { close, baseUrl } = await listen();
-void baseUrl;
+const { close } = await listen();
 
 let client;
 beforeEach(async () => {
@@ -83,8 +82,6 @@ describe('authorization matrix — admin surface', () => {
     const { token } = createSession(user.id, { pending2fa: true });
     client.clearCookies();
     const { default: request } = await import('supertest');
-    const appClient = await makeClient();
-    void appClient;
     const res = await request(client.app).get('/admin').set('Cookie', `cw_session=${token}`).redirects(0);
     assert.ok([302, 303].includes(res.status));
     assert.match(res.headers.location, /login/);
@@ -93,7 +90,6 @@ describe('authorization matrix — admin surface', () => {
 
 describe('authorization matrix — other-user resources', () => {
   let orderA;
-  before(async () => {});
 
   it('users cannot read or cancel each other\'s orders (IDOR)', async () => {
     // casey places an order.
@@ -106,9 +102,9 @@ describe('authorization matrix — other-user resources', () => {
     await client.post('/checkout/address', {
       name: 'Casey Example', email: 'casey@example.test', line1: '42 Example Lane',
       line2: '', city: 'Springfield', region: 'NY', postal_code: '12345', country: 'US',
-      _csrf: csrfOf(await (await client.get('/checkout')).text()),
+      _csrf: csrfOf(await client.get('/checkout')),
     });
-    await client.post('/checkout/delivery', { shipping_method: 'standard', _csrf: csrfOf(await (await client.get('/checkout/delivery')).text()) });
+    await client.post('/checkout/delivery', { shipping_method: 'standard', _csrf: csrfOf(await client.get('/checkout/delivery')) });
     const review = await client.get('/checkout/review');
     const placed = await client.post('/checkout/place', {
       _ik: /name="_ik" value="([0-9a-f]+)"/.exec(review.text)[1], _csrf: csrfOf(review),
@@ -123,7 +119,7 @@ describe('authorization matrix — other-user resources', () => {
     const view = await client.get(`/orders/${orderA}`);
     assert.equal(view.status, 404, 'another user\'s order must not render');
 
-    const cancel = await client.post(`/orders/${orderA}/cancel`, { _csrf: csrfOf(await (await client.get('/')).text()) });
+    const cancel = await client.post(`/orders/${orderA}/cancel`, { _csrf: csrfOf(await client.get('/')) });
     assert.ok([403, 404].includes(cancel.status), `cancel as other user -> ${cancel.status}`);
     assert.equal(db.prepare('SELECT status FROM orders WHERE id = ?').get(orderA).status, 'pending');
   });

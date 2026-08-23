@@ -55,11 +55,13 @@
     <% } %>
   </section>
   <aside class="checkout-summary">
-    <h2>In your order</h2>
-    <% lines.forEach((l) => { %>
-      <p class="sum-line"><span><%= l.product_name %> × <%= l.quantity %></span><span class="num"><%= formatMoney(l.line_total_cents) %></span></p>
-    <% }) %>
-    <p class="sum-line total"><span>Total</span><span class="num"><%= formatMoney(order.total_cents) %></span></p>
+    <details open>
+      <summary>In your order</summary>
+      <% lines.forEach((l) => { %>
+        <p class="sum-line"><span><%= l.product_name %> × <%= l.quantity %></span><span class="num"><%= formatMoney(l.line_total_cents) %></span></p>
+      <% }) %>
+      <p class="sum-line total"><span>Total</span><span class="num"><%= formatMoney(order.total_cents) %></span></p>
+    </details>
   </aside>
 </div>
 <script src="/js/pay-poll.js"></script>

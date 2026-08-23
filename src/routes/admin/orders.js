@@ -4,6 +4,7 @@ import { getOrderById, getOrderEvents, transitionOrder } from '../../services/or
 import { getOrderLines } from '../../services/checkout.js';
 import { getPaymentProvider } from '../../services/payments/index.js';
 import { audit } from '../../services/admin.js';
+import { log } from '../../lib/logger.js';
 
 const router = Router();
 
@@ -22,18 +23,25 @@ router.get('/admin/orders', (req, res) => {
            OR o.shipping_address_json LIKE '%' || ? || '%')
   `;
   const params = [status, status, q, q, q, q, q];
-  const direction = req.query.direction === 'desc' ? 'DESC' : 'ASC';
-  if (req.query.sort === 'total') {
-    sql += ` ORDER BY o.total_cents ${direction}`;
-  } else if (req.query.sort === 'number') {
-    sql += ` ORDER BY o.number ${direction}`;
-  } else {
-    sql += ` ORDER BY o.placed_at DESC`;
-  }
+  const sortKey = ['placed', 'number', 'total'].includes(req.query.sort) ? req.query.sort : 'placed';
+  const sortCols = { placed: 'o.placed_at', number: 'o.number', total: 'o.total_cents' };
+  const direction = req.query.direction === 'asc' ? 'ASC' : 'DESC';
+  sql += ` ORDER BY ${sortCols[sortKey]} ${direction}`;
   sql += ' LIMIT 200';
 
   const rows = db.prepare(sql).all(...params);
-  res.render('admin/orders/index', { layout: 'admin', title: 'Orders', rows, q, status, sort: String(req.query.sort || '') });
+  const nextDirection = (key) => (sortKey === key && direction === 'ASC' ? 'desc' : 'asc');
+  res.render('admin/orders/index', {
+    layout: 'admin',
+    title: 'Orders',
+    rows, q, status,
+    sortKey,
+    direction,
+    nextDirection,
+    ariaSort: (key) => (sortKey === key ? (direction === 'ASC' ? 'ascending' : 'descending') : null),
+    arrowFor: (key) => (sortKey === key ? (direction === 'ASC' ? '↑' : '↓') : ''),
+    csrfToken: req.csrfToken(),
+  });
 });
 
 router.get('/admin/orders.csv', (req, res) => {
@@ -48,7 +56,9 @@ router.get('/admin/orders.csv', (req, res) => {
   `).all(...[req.query.status && STATUS_FILTERS.includes(req.query.status) ? req.query.status : null, req.query.status && STATUS_FILTERS.includes(req.query.status) ? req.query.status : null]);
 
   const esc = (v) => {
-    const s = String(v ?? '');
+    let s = String(v ?? '');
+    // CSV injection guard: neutralise spreadsheet formula metacharacters.
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
   };
   const lines = ['number,status,placed_at,email,subtotal_cents,discount_cents,shipping_cents,tax_cents,total_cents,refund_total_cents,shipping_method,address'];
@@ -112,7 +122,7 @@ router.post('/admin/orders/:id/refund', (req, res) => {
     res.flash('warn', 'No settled payment found for this order.');
     return res.redirect(`/admin/orders/${order.id}`);
   }
-  const result = getPaymentProvider('mock').refund(payment.provider_ref, order.total_cents - order.refund_total_cents);
+  const result = getPaymentProvider('mock').refund(payment.provider_ref);
   if (!result.ok) {
     res.flash('warn', result.error);
   } else {

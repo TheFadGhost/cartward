@@ -113,7 +113,6 @@ describe('guest checkout end to end (sandbox success)', () => {
       card_number: '4000000000000002',
       _csrf: csrfOf(await client.get(`/checkout/pay/${orderId}`)),
     });
-    await waitForOrderStatus(orderId, ['pending']); // just ensure webhook processed via payment row
     const paymentRow = () => db.prepare('SELECT status, failure_reason FROM payments WHERE order_id = ? ORDER BY created_at DESC LIMIT 1').get(orderId);
 
     let tries = 0;
@@ -195,8 +194,6 @@ describe('discount codes at checkout', () => {
   it('applies WELCOME10 and reduces the total', async () => {
     const variant = pickStockedVariant();
     const review = await guestCheckoutToReview(variant.id, 1);
-    const beforeTotal = Number(/class="grand"><dt>Total<\/dt><dd>\$([\d.]+)</.exec(review.text)?.[1]?.replace('.', '') ?? 0);
-    void beforeTotal;
 
     const discRes = await client.post('/checkout/discount', { code: 'WELCOME10', _csrf: csrfOf(review) });
     assert.equal(discRes.status, 302);
@@ -348,8 +345,6 @@ describe('webhook security and ordering', () => {
     const orderId = /pay\/([0-9a-f-]+)/.exec(placed.headers.location)[1];
 
     // Start a slow payment, then cancel the order before it settles.
-    const { mockProvider, signPayload } = await import('../../src/services/payments/mock.js');
-    void mockProvider; void signPayload;
 
     // Cancel first.
     await client.post(`/orders/${orderId}/cancel`, {

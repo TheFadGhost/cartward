@@ -1,7 +1,7 @@
 <%- include('/partials/admin-head') %>
 
 <p><a href="/admin/orders" class="muted-link">← All orders</a></p>
-<h1>Order <%= order.number %> <span class="pill pill-<%= order.status %>" style="vertical-align: middle;"><%= order.status %></span></h1>
+<h1>Order <%= order.number %> <span class="pill pill-<%= order.status %> with-pill"><%= order.status %></span></h1>
 
 <div class="grid-2">
   <section>
@@ -10,7 +10,7 @@
       <tbody>
         <% lines.forEach((l) => { %>
           <tr>
-            <td class="wrap"><%= l.product_name %> <span style="color:var(--ink-muted);"><%= l.variant_label !== 'Standard' ? l.variant_label : '' %> · <%= l.sku %></span></td>
+            <td class="wrap"><%= l.product_name %> <span class="muted-inline"><%= l.variant_label !== 'Standard' ? l.variant_label : '' %> · <%= l.sku %></span></td>
             <td class="num"><%= formatMoney(l.unit_price_cents) %></td>
             <td class="num"><%= l.quantity %></td>
             <td class="num"><%= formatMoney(l.line_total_cents) %></td>
@@ -30,7 +30,7 @@
   </section>
 
   <section>
-    <h2 style="margin-top:0;">Customer &amp; delivery</h2>
+    <h2 class="mt-0">Customer &amp; delivery</h2>
     <% const addr = JSON.parse(order.shipping_address_json); const email = locals.userEmail || order.guest_email || addr.email; %>
     <p>
       <%= addr.name %><br>
@@ -65,7 +65,7 @@
       </div>
       <button type="submit" class="button button-secondary">Apply transition</button>
     </form>
-    <form method="post" action="/admin/orders/<%= order.id %>/refund" style="margin-top:10px;">
+    <form method="post" action="/admin/orders/<%= order.id %>/refund" class="mt-10">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button type="submit" class="button button-danger"
               <%= payment && payment.status === 'succeeded' ? '' : 'disabled aria-disabled="true" title="No settled payment to refund"' %>>Request full refund</button>
@@ -83,7 +83,7 @@
         <% if (ev.type === 'state_change') { %>
           <strong><%= ev.from_status %></strong> → <strong><%= ev.to_status %></strong>
           <% if (ev.detail) { %> — <%= ev.detail %><% } %>
-          <span style="color:var(--ink-muted);"><%= ev.actor %></span>
+          <span class="muted-inline"><%= ev.actor %></span>
         <% } else { %>
           <%= ev.type %>: <%= ev.detail || '' %>
         <% } %>

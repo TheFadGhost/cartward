@@ -16,8 +16,8 @@
       </form>
     <% } else if (enroll) { %>
       <p>Add this secret to your authenticator app, then enter the current 6-digit code.</p>
-      <p><code style="word-break: break-all; background: var(--surface-sunken); padding: 8px; display: block; border-radius: 4px;"><%= enroll.secret %></code></p>
-      <p class="hint">Or use the setup link: <code style="word-break: break-all;"><%= enroll.uri %></code></p>
+      <p><code class="code-block"><%= enroll.secret %></code></p>
+      <p class="hint">Or use the setup link: <code class="break-all"><%= enroll.uri %></code></p>
       <form method="post" action="/account/security/totp/confirm" class="stack">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="field">
@@ -61,7 +61,7 @@
         <% }) %>
       </tbody>
     </table>
-    <form method="post" action="/account/security/sessions/revoke-all" style="margin-top:12px;">
+    <form method="post" action="/account/security/sessions/revoke-all" class="mt-12">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button type="submit" class="button button-danger">Sign out everywhere</button>
     </form>

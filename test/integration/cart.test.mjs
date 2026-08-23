@@ -68,15 +68,17 @@ describe('guest cart basics', () => {
   });
 
   it('clamps quantity to available stock honestly', async () => {
-    const variant = pickVariant('stocked');
-    // Find a low-stock stocked variant (<=5 available).
     const low = db.prepare(`
-      SELECT id, stock - reserved AS avail FROM variants
-      WHERE backorderable = 0 AND stock - reserved BETWEEN 1 AND 4 LIMIT 1
-    `).get() ?? variant;
-    const res = await addToCart(low.id, 50);
-    assert.equal(res.status, 302);
-    assert.ok(res.headers.location === '/cart');
+      SELECT v.id, v.stock - v.reserved AS avail, p.slug AS product_slug FROM variants v
+      JOIN products p ON p.id = v.product_id
+      WHERE v.backorderable = 0 AND v.stock - v.reserved BETWEEN 1 AND 4 LIMIT 1
+    `).get();
+    assert.ok(low, 'seed should include a low-stock variant');
+    await addToCart(low.id, 50);
+    const page = await client.get('/cart');
+    // The cart line must show the clamped quantity and the warning flash.
+    assert.match(page.text, new RegExp(`value="${low.avail}"`));
+    assert.match(page.text, /Quantity limited to/i);
   });
 
   it('updates quantities and removes lines', async () => {

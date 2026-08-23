@@ -120,12 +120,22 @@ export function transitionOrder({ orderId, toStatus, actor = 'system', detail = 
   return getOrderById(orderId);
 }
 
+/** Best-effort customer email for an order (account or guest snapshot). */
+export function orderEmailFor(order) {
+  if (order.user_id) {
+    return db.prepare('SELECT email FROM users WHERE id = ?').get(order.user_id)?.email ?? null;
+  }
+  try {
+    return JSON.parse(order.shipping_address_json)?.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function notifyTransition(orderId, toStatus) {
   const order = getOrderById(orderId);
   if (!order) return;
-  const email = order.user_id
-    ? db.prepare('SELECT email FROM users WHERE id = ?').get(order.user_id)?.email
-    : order.guest_email;
+  const email = orderEmailFor(order);
   if (!email) return;
   try {
     if (toStatus === 'shipped') {

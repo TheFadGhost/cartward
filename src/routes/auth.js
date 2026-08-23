@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { config } from '../config.js';
-import { rateLimitMiddleware } from '../lib/rate-limit.js';
+import { rateLimitMiddleware, rateLimit } from '../lib/rate-limit.js';
 import {
-  AuthError, createUser, findUserByEmail, verifyEmailWithToken, issueEmailVerification,
+  AuthError, handleRegistration, findUserByEmail, verifyEmailWithToken, issueEmailVerification,
   requestPasswordReset, resetPasswordWithToken, verifyTotpChallenge, verifyPassword,
 } from '../services/auth.js';
 import { mergeGuestCartOnLogin } from '../services/cart.js';
@@ -55,7 +55,7 @@ router.post('/register',
       return renderAuthPage(req, res, 'auth/register', { title: 'Create account', errors, values: req.body }, 422);
     }
     try {
-      await createUser({ email: parsed.data.email, password: parsed.data.password });
+      await handleRegistration({ email: parsed.data.email, password: parsed.data.password });
     } catch (err) {
       if (!(err instanceof AuthError)) return next(err);
       const field = err.code === 'weak_password' ? 'password' : 'email';
@@ -65,6 +65,7 @@ router.post('/register',
         values: { email: parsed.data.email },
       }, 422);
     }
+    // Identical response whether or not the address was new (no enumeration).
     // Deliberately no auto-login: the verification email proves delivery.
     res.flash('success', 'Account created. Check your inbox for a verification link.');
     return res.redirect('/login');
@@ -83,28 +84,27 @@ const resendSchema = z.object({ email: emailField });
 
 router.post('/verify-email/resend',
   rateLimitMiddleware({ name: 'verify-resend-ip', keyFn: ipOf, limit: 5, windowMs: 60 * 60 * 1000 }),
-  async (req, res) => {
-    const parsed = resendSchema.safeParse(req.body);
-    if (parsed.success) {
-      const user = findUserByEmail(parsed.data.email);
-      if (user && !user.email_verified_at && perAccountResend(user.email)) {
-        issueEmailVerification(user.id).catch(() => {});
+  async (req, res, next) => {
+    try {
+      const parsed = resendSchema.safeParse(req.body);
+      if (parsed.success) {
+        const user = findUserByEmail(parsed.data.email);
+        if (user && !user.email_verified_at && perAccountResend(user.email)) {
+          issueEmailVerification(user.id).catch(() => {});
+        }
       }
+      res.flash('success', 'If that email has an unverified account, a new link is on its way.');
+      return res.redirect('/login');
+    } catch (err) {
+      return next(err);
     }
-    res.flash('success', 'If that email has an unverified account, a new link is on its way.');
-    res.redirect('/login');
   });
 
-const resendHits = new Map();
+// Per-account resend throttle backed by the shared DB rate limiter.
 function perAccountResend(email) {
-  const now = Date.now();
-  const windowStart = now - 60 * 60 * 1000;
-  const hits = (resendHits.get(email) || []).filter((t) => t > windowStart);
-  if (hits.length >= 3) return false;
-  hits.push(now);
-  resendHits.set(email, hits);
-  return true;
+  return rateLimit('verify-resend-account', normalizeEmailKey(email), 3, 60 * 60 * 1000).allowed;
 }
+const normalizeEmailKey = (e) => String(e || '').trim().toLowerCase();
 
 // ---------------------------------------------------------------------------
 // Login / logout / 2FA challenge

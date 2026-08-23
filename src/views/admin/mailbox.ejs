@@ -5,9 +5,9 @@
 <% rows.forEach((m) => { %>
   <details class="box">
     <summary><strong><%= m.subject %></strong> — to <%= m.to_email %> · <%= new Date(m.sent_at).toLocaleString('en-US') %></summary>
-    <details style="margin-left:16px;">
+    <details class="nested-details">
       <summary>Raw message source</summary>
-      <pre style="white-space: pre-wrap; font-size: 11.5px; background: var(--surface-sunken); padding: 10px; border-radius: 4px; overflow-x: auto;"><%= m.preview %></pre>
+      <pre class="raw-eml"><%= m.preview %></pre>
     </details>
   </details>
 <% }) %>

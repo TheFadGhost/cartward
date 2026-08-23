@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
-  getOrderById, getOrderEvents, listUserOrders, transitionOrder, findOrderByNumber,
+  getOrderById, getOrderEvents, listUserOrders, transitionOrder, findOrderByNumber, orderEmailFor,
 } from '../services/orders.js';
 import { getOrderLines, orderBelongsTo } from '../services/checkout.js';
 import { hmacHex } from '../lib/tokens.js';
 import { config } from '../config.js';
 import { rateLimitMiddleware } from '../lib/rate-limit.js';
+import { log } from '../lib/logger.js';
 
 const router = Router();
 const requireLogin = (req, res, next) => {
@@ -76,11 +77,7 @@ router.post('/orders/track', trackLimiter, (req, res) => {
 });
 
 function orderEmailMatches(order, email) {
-  if (order.user_id) {
-    return db.prepare('SELECT email FROM users WHERE id = ?').get(order.user_id)?.email === email;
-  }
-  return order.guest_email?.toLowerCase() === email
-    || JSON.parse(order.shipping_address_json)?.email?.toLowerCase() === email;
+  return (orderEmailFor(order) ?? '').toLowerCase() === String(email).toLowerCase();
 }
 
 router.get('/orders/:id', requireLogin, (req, res) => {
@@ -139,11 +136,14 @@ function doCancel(req, res, order, backTo) {
   return res.redirect(backTo);
 }
 
-// Payment status polling for the pay page (token-authenticated).
+// Payment status polling for the pay page. The token is time-bucketed
+// (10-minute windows, current or previous) so links can't be replayed forever.
 router.get('/orders/:id/status.json', (req, res) => {
   const order = getOrderById(req.params.id);
-  const expected = hmacHex(config.sessionSecret, `poll:${req.params.id}`);
-  if (String(req.query.t) !== expected || !order) {
+  if (!order) return res.status(403).json({ error: 'forbidden' });
+  const bucket = Math.floor(Date.now() / (10 * 60 * 1000));
+  const candidates = [bucket, bucket - 1].map((b) => hmacHex(config.sessionSecret, `poll:${req.params.id}:${b}`));
+  if (!candidates.includes(String(req.query.t))) {
     return res.status(403).json({ error: 'forbidden' });
   }
   const payment = db.prepare(

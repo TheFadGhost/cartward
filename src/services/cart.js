@@ -154,9 +154,6 @@ export function addItem(cartId, variantId, quantity) {
     return { ok: false, error: `${variant.product_name} is out of stock right now.` };
   }
   const finalQty = Math.min(qty, purchasableCap);
-  if (finalQty < qty) {
-    // Allowed but clamped — report honestly.
-  }
 
   const existing = db.prepare('SELECT * FROM cart_items WHERE cart_id = ? AND variant_id = ?').get(cartId, variantId);
   const tx = db.transaction(() => {

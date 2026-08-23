@@ -64,7 +64,7 @@ export const config = {
     absoluteMs: 30 * 24 * 60 * 60 * 1000, // hard cap
   },
   cartTtlMs: 30 * 24 * 60 * 60 * 1000,
-  reservationTtlMs: 15 * 60 * 1000,
+  reservationTtlMs: Number(process.env.RESERVATION_TTL_MS || 15 * 60 * 1000),
   passwordMinLength: 12,
 };
 

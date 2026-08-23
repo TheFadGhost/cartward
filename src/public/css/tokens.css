@@ -2,6 +2,7 @@
    See DESIGN.md for the full system. */
 
 :root, [data-theme="light"] {
+  --artboard: #f3eee6; /* product-art board: constant across themes BY DESIGN so imagery stays opaque/warm on dark */
   --paper: #faf7f2;
   --surface: #ffffff;
   --surface-sunken: #f3eee6;
@@ -23,6 +24,7 @@
 }
 
 [data-theme="dark"] {
+  /* --artboard intentionally NOT overridden: see note above */
   --paper: #171512;
   --surface: #201d19;
   --surface-sunken: #191713;
@@ -43,8 +45,8 @@
   --focus-ring: #9db8ff;
 }
 
-/* Admin high-contrast theme (used on data-surface="admin") */
-[data-surface="admin"][data-theme="contrast"] {
+/* Admin high-contrast theme. data-surface and data-theme both live on <html>. */
+html[data-surface="admin"][data-theme="contrast"] {
   --paper: #ffffff;
   --surface: #ffffff;
   --surface-sunken: #ffffff;

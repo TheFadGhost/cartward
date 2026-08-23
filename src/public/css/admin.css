@@ -119,3 +119,47 @@ details summary { cursor: pointer; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
 }
+
+/* Utilities (kept here so templates stay CSP-clean: no inline styles) */
+.mt-0 { margin-top: 0; }
+.mt-10 { margin-top: 10px; }
+.mt-12 { margin-top: 12px; }
+.muted-inline { color: var(--ink-muted); }
+.tiny-code { font-size: 11px; }
+.code-block {
+  word-break: break-all;
+  background: var(--surface-sunken);
+  padding: 10px;
+  display: block;
+  border-radius: 4px;
+}
+.break-all { word-break: break-all; }
+.raw-eml {
+  white-space: pre-wrap;
+  font-size: 11.5px;
+  background: var(--surface-sunken);
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.nested-details { margin-left: 16px; }
+.with-pill { vertical-align: middle; }
+.thumb-img {
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: var(--artboard);
+}
+
+/* Status pill distinctions (deuteranopia-safe: labels always present; hues + lightness vary) */
+.pill-shipped { background: var(--info-bg); color: var(--info); border-color: var(--info); }
+.pill-fulfilled { background: var(--surface-sunken); color: var(--ink); border-color: var(--line-strong); }
+.pill-out { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.pill-low { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.pill-backorder { background: var(--info-bg); color: var(--info); border-color: var(--info); }
+
+/* Admin footer shortcuts hint */
+.admin-shortcuts { color: var(--ink-muted); font-size: 11.5px; margin-top: 8px; }
+kbd {
+  font-family: inherit; font-size: 10.5px; padding: 1px 5px;
+  border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 3px;
+}

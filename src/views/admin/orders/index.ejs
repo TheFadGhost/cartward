@@ -17,11 +17,11 @@
 
 <table class="data">
   <thead><tr>
-    <th scope="col"><a href="?q=<%= encodeURIComponent(q) %>&status=<%= status || '' %>" aria-label="Sort by order number">Order</a></th>
-    <th scope="col">Placed</th>
+    <th scope="col" aria-sort="<%= ariaSort('number') || 'none' %>"><a href="?q=<%= encodeURIComponent(q) %>&status=<%= status || '' %>&sort=number&direction=<%= nextDirection('number') %>" aria-label="Sort by order number">Order <%= arrowFor('number') %></a></th>
+    <th scope="col" aria-sort="<%= ariaSort('placed') || 'none' %>"><a href="?q=<%= encodeURIComponent(q) %>&status=<%= status || '' %>&sort=placed&direction=<%= nextDirection('placed') %>" aria-label="Sort by placement date">Placed <%= arrowFor('placed') %></a></th>
     <th scope="col">Customer</th>
     <th scope="col">Status</th>
-    <th scope="col" class="num"><a href="?q=<%= encodeURIComponent(q) %>&status=<%= status || '' %>&sort=total&direction=desc" aria-label="Sort by total, highest first">Total ↓</a></th>
+    <th scope="col" class="num" aria-sort="<%= ariaSort('total') || 'none' %>"><a href="?q=<%= encodeURIComponent(q) %>&status=<%= status || '' %>&sort=total&direction=<%= nextDirection('total') %>" aria-label="Sort by order total">Total <%= arrowFor('total') %></a></th>
   </tr></thead>
   <tbody>
     <% rows.forEach((o) => { %>
@@ -33,7 +33,12 @@
         <td class="num"><%= formatMoney(o.total_cents) %></td>
       </tr>
     <% }) %>
-    <% if (rows.length === 0) { %><tr><td colspan="5">No orders match.</td></tr><% } %>
+    <% if (rows.length === 0) { %>
+      <tr><td colspan="5">
+        No orders match<% if (q) { %> “<%= q %>”<% } %><% if (status) { %> with status “<%= status %>”<% } %>.
+        <a href="/admin/orders">Clear filters</a>
+      </td></tr>
+    <% } %>
   </tbody>
 </table>
 

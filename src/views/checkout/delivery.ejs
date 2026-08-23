@@ -31,11 +31,13 @@
     </form>
   </section>
   <aside class="checkout-summary">
-    <h2>Order summary</h2>
-    <% view.lines.forEach((l) => { %>
-      <p class="sum-line"><span><%= l.name %> × <%= l.quantity %></span><span class="num"><%= formatMoney(l.snapshotCents * l.quantity) %></span></p>
-    <% }) %>
-    <p class="sum-line total"><span>Subtotal</span><span class="num"><%= formatMoney(view.subtotalCents) %></span></p>
+    <details open>
+      <summary>Order summary</summary>
+      <% view.lines.forEach((l) => { %>
+        <p class="sum-line"><span><%= l.name %> × <%= l.quantity %></span><span class="num"><%= formatMoney(l.snapshotCents * l.quantity) %></span></p>
+      <% }) %>
+      <p class="sum-line total"><span>Subtotal</span><span class="num"><%= formatMoney(view.subtotalCents) %></span></p>
+    </details>
   </aside>
 </div>
 <%- include('/partials/footer') %>

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listCustomers, getCustomer, readAuditLog } from '../../services/admin.js';
+import { listCustomers, getCustomerOrders, readAuditLog } from '../../services/admin.js';
 import { db } from '../../db/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,13 +14,13 @@ router.get('/admin/customers', (req, res) => {
 });
 
 router.get('/admin/customers/:id', (req, res) => {
-  const customer = getCustomer(req.params.id);
+  const customer = db.prepare('SELECT id, email, role, email_verified_at, totp_enabled_at, created_at FROM users WHERE id = ?').get(req.params.id);
   if (!customer) return res.status(404).render('error', { title: 'Not found', message: 'No such customer.', statusCode: 404 });
   res.render('admin/customers/show', {
     layout: 'admin',
     title: customer.email,
     customer,
-    orders: db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY placed_at DESC LIMIT 50').all(customer.id),
+    orders: getCustomerOrders(customer.id),
   });
 });
 

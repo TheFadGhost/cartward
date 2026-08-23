@@ -21,16 +21,9 @@ describe('order state machine', () => {
           assert.ok(canTransition(from, to), `should allow ${key}`);
         } else {
           assert.equal(canTransition(from, to), false, `should reject ${key}`);
-          if (from !== to) {
-            assert.throws(() => transitionOrder({ orderId: 'no-such-order-matters-not', toStatus: to }),
-              // The machine check fires before the lookup on invalid pairs.
-              (err) => err instanceof Error);
-          }
         }
       }
     }
-    // Self-transitions are idempotent no-ops by design.
-    for (const s of ORDER_STATUSES) assert.ok(canTransition(s, s) === false || true);
   });
 
   it('rejects invalid transitions with a typed error even for existing orders', async () => {

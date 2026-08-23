@@ -3,7 +3,7 @@ import { db } from '../db/index.js';
 import { newId } from '../lib/tokens.js';
 import { log } from '../lib/logger.js';
 import { verifySignature } from '../services/payments/mock.js';
-import { transitionOrder } from '../services/orders.js';
+import { transitionOrder, orderEmailFor } from '../services/orders.js';
 import { mailer } from '../services/email/index.js';
 
 const router = Router();
@@ -40,6 +40,8 @@ router.post('/webhooks/payment', expressRawBody, (req, res) => {
   }
 
   // Idempotency gate: the UNIQUE(provider,id) index absorbs duplicates.
+  // A duplicate of an event that was RECEIVED but never successfully
+  // processed is retried rather than blindly acknowledged.
   const inserted = db.prepare(`
     INSERT INTO webhook_events (id, provider, type, payload_json, signature_valid, received_at, process_attempts)
     VALUES (?, 'mock', ?, ?, 1, ?, 1)
@@ -47,6 +49,25 @@ router.post('/webhooks/payment', expressRawBody, (req, res) => {
   `).run(event.id, event.type, rawBody.toString('utf8'), Date.now());
 
   if (inserted.changes === 0) {
+    const existing = db.prepare(
+      'SELECT processed_at FROM webhook_events WHERE id = ? AND provider = ?',
+    ).get(event.id, 'mock');
+    if (existing && existing.processed_at === null) {
+      db.prepare('UPDATE webhook_events SET process_attempts = process_attempts + 1 WHERE id = ? AND provider = ?')
+        .run(event.id, 'mock');
+      try {
+        processEvent(event);
+        db.prepare('UPDATE webhook_events SET processed_at = ?, last_error = NULL WHERE id = ? AND provider = ?')
+          .run(Date.now(), event.id, 'mock');
+        log.info('webhook reprocessed on redelivery', { eventId: event.id });
+        return res.status(200).json({ received: true, reprocessed: true });
+      } catch (err) {
+        db.prepare('UPDATE webhook_events SET last_error = ? WHERE id = ? AND provider = ?')
+          .run(err.message, event.id, 'mock');
+        log.error('webhook retry failed', { eventId: event.id, message: err.message });
+        return res.status(500).json({ received: true, processed: false });
+      }
+    }
     db.prepare('UPDATE webhook_events SET process_attempts = process_attempts + 1 WHERE id = ? AND provider = ?')
       .run(event.id, 'mock');
     log.info('webhook duplicate ignored', { eventId: event.id, type: event.type });
@@ -131,17 +152,27 @@ function processEvent(event) {
     }
     if (order.status === 'refunded') return { processed: true, note: 'already_refunded' };
 
-    db.prepare('UPDATE payments SET refunded_cents = COALESCE(refunded_cents,0) + ?, updated_at = ? WHERE id = ?')
-      .run(amountCents, Date.now(), payment.id);
-    db.prepare('UPDATE orders SET refund_total_cents = COALESCE(refund_total_cents,0) + ?, updated_at = ? WHERE id = ?')
-      .run(amountCents, Date.now(), order.id);
-    transitionOrder({
-      orderId: order.id,
-      toStatus: 'refunded',
-      actor: 'admin',
-      detail: `Refund of $${(amountCents / 100).toFixed(2)} confirmed by the processor.`,
-    });
-    return { processed: true };
+    // The webhook is the sole writer of refunded amounts (prevents double counting).
+    db.transaction(() => {
+      db.prepare('UPDATE payments SET refunded_cents = COALESCE(refunded_cents,0) + ?, updated_at = ? WHERE id = ?')
+        .run(amountCents, Date.now(), payment.id);
+      db.prepare('UPDATE orders SET refund_total_cents = COALESCE(refund_total_cents,0) + ?, updated_at = ? WHERE id = ?')
+        .run(amountCents, Date.now(), order.id);
+    })();
+
+    const freshOrder = db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);
+    if (freshOrder.refund_total_cents >= freshOrder.total_cents) {
+      transitionOrder({
+        orderId: order.id,
+        toStatus: 'refunded',
+        actor: 'admin',
+        detail: `Full refund of $${(amountCents / 100).toFixed(2)} confirmed by the processor.`,
+      });
+      return { processed: true };
+    }
+    addOrderEvent(order.id, 'partial_refund',
+      `Partial refund of $${(amountCents / 100).toFixed(2)} confirmed. The order remains open.`);
+    return { processed: true, note: 'partial_refund' };
   }
 
   addOrderEvent(payment.order_id, 'webhook_unknown_type', `Unrecognised webhook type: ${event.type}`);
@@ -151,19 +182,15 @@ function processEvent(event) {
 
 function sendConfirmationEmail(orderId) {
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-  const email = order.user_id
-    ? db.prepare('SELECT email FROM users WHERE id = ?').get(order.user_id)?.email
-    : order.guest_email;
+  const email = orderEmailFor(order);
   if (!email) return;
   const lines = db.prepare('SELECT product_name AS name, quantity, line_total_cents FROM order_lines WHERE order_id = ?')
     .all(orderId)
     .map((l) => ({ ...l, lineTotal: `$${(l.line_total_cents / 100).toFixed(2)}` }));
-  import('../services/email/index.js').then(({ mailer }) => {
-    mailer.sendTemplate(email, 'orderConfirmation', {
-      orderNumber: order.number,
-      total: `$${(order.total_cents / 100).toFixed(2)}`,
-      lines,
-    }).catch(() => {});
+  mailer.sendTemplate(email, 'orderConfirmation', {
+    orderNumber: order.number,
+    total: `$${(order.total_cents / 100).toFixed(2)}`,
+    lines,
   }).catch(() => {});
 }
 

@@ -4,11 +4,32 @@ import path from 'node:path';
 import busboy from 'busboy';
 import { db } from '../../db/index.js';
 import { config } from '../../config.js';
-import { newId } from '../../lib/tokens.js';
+import { newId, hmacHex } from '../../lib/tokens.js';
 import { audit } from '../../services/admin.js';
 import * as catalog from '../../services/catalog.js';
+import { parseMoneyToCents } from '../../lib/money.js';
 
 const router = Router();
+
+// --- Bulk actions ---------------------------------------------------------------
+
+router.post('/admin/products/bulk', (req, res) => {
+  const ids = [].concat(req.body.ids || []).filter((id) => typeof id === 'string').slice(0, 200);
+  const action = req.body.action === 'archive' ? 'archived'
+    : req.body.action === 'activate' ? 'active' : null;
+  if (!action || ids.length === 0) {
+    res.flash('warn', 'Select at least one product and an action.');
+    return res.redirect('/admin/products');
+  }
+  const update = db.prepare(`UPDATE products SET status = ?, updated_at = ? WHERE id = ?`);
+  let changed = 0;
+  db.transaction(() => {
+    for (const id of ids) changed += update.run(action, Date.now(), id).changes;
+  })();
+  audit({ actorType: 'admin', actorId: req.user.id, action: `product.bulk_${action}`, entityType: 'product', after: { count: changed, action }, ip: req.ip });
+  res.flash('success', `${changed} product${changed === 1 ? '' : 's'} set to ${action}.`);
+  return res.redirect('/admin/products');
+});
 
 // --- Product list -------------------------------------------------------------
 
@@ -77,12 +98,19 @@ router.get('/admin/products/:id', (req, res) => {
   const tagStr = db.prepare(`
     SELECT group_concat(t.name, ', ') AS tags FROM product_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.product_id = ?
   `).get(product.id)?.tags ?? '';
+  const uploadTicket = uploadTicketFor(req);
   return res.render('admin/products/form', {
-    layout: 'admin', title: `Edit — ${product.name}`,
+    layout: 'admin', title: `Edit â€” ${product.name}`,
     product: { ...product, brandName: brand ?? '' },
-    variants, images, errors: {}, values: {}, tagStr, ...formData(),
+    variants, images, errors: {}, values: {}, tagStr, uploadTicket, ...formData(),
   });
 });
+
+/** Time-bound CSRF ticket for the multipart upload form. */
+function uploadTicketFor(req) {
+  const bucket = Math.floor(Date.now() / (10 * 60 * 1000));
+  return hmacHex(config.sessionSecret, `csrf-upload:${req.sessionId}:${bucket}`);
+}
 
 router.post('/admin/products/:id', (req, res) => {
   const product = catalog.getProductById(req.params.id);
@@ -91,7 +119,7 @@ router.post('/admin/products/:id', (req, res) => {
   const errors = validateProduct(values);
   if (Object.keys(errors).length) {
     return res.status(422).render('admin/products/form', {
-      layout: 'admin', title: `Edit — ${product.name}`,
+      layout: 'admin', title: `Edit â€” ${product.name}`,
       product, variants: db.prepare('SELECT * FROM variants WHERE product_id = ?').all(product.id),
       images: db.prepare('SELECT * FROM product_images WHERE product_id = ?').all(product.id),
       errors, values: { ...values }, ...formData(),
@@ -136,7 +164,7 @@ function validateProduct(values) {
 router.post('/admin/products/:id/variants', (req, res) => {
   const product = catalog.getProductById(req.params.id);
   if (!product) return res.status(404).render('error', { title: 'Not found', message: 'No such product.', statusCode: 404 });
-  const priceCents = parsePriceCents(req.body.price);
+  const priceCents = parseMoneyToCents(String(req.body.price ?? ''));
   const stock = Number.parseInt(String(req.body.stock ?? '0'), 10);
   const backorderable = req.body.backorderable === 'on' ? 1 : 0;
   if (priceCents === null) {
@@ -156,15 +184,23 @@ router.post('/admin/products/:id/variants', (req, res) => {
   return res.redirect(`/admin/products/${product.id}`);
 });
 
-let skuCounter = Math.floor(Math.random() * 1000) + 5000;
-function generateSku() {
-  return `CW-${skuCounter++}`;
+// SKU sequence continues from whatever the database already issued, so a
+// restart can't re-issue an old SKU.
+const skuCounter = { n: 0 };
+function nextSkuNumber() {
+  if (skuCounter.n === 0) {
+    const rows = db.prepare("SELECT sku FROM variants WHERE sku LIKE 'CW-%'").all();
+    let max = 999;
+    for (const r of rows) {
+      const num = Number.parseInt(r.sku.slice(3), 10);
+      if (Number.isFinite(num) && num > max) max = num;
+    }
+    skuCounter.n = max + 1;
+  }
+  return skuCounter.n++;
 }
-
-function parsePriceCents(input) {
-  const m = /^(\d{1,6})(?:\.(\d{2}))?$/.exec(String(input ?? '').trim());
-  if (!m) return null;
-  return Number(m[1]) * 100 + Number((m[2] ?? '00'));
+function generateSku() {
+  return `CW-${nextSkuNumber()}`;
 }
 
 /** Inventory adjustment with an explicit delta and mandatory reason. */
@@ -180,7 +216,7 @@ router.post('/admin/variants/:id/adjust', (req, res) => {
     return res.redirect(`/admin/products/${variant.pid}`);
   }
   if (reason.length < 3) {
-    res.flash('warn', 'Give a short reason for the adjustment — it goes in the audit trail.');
+    res.flash('warn', 'Give a short reason for the adjustment â€” it goes in the audit trail.');
     return res.redirect(`/admin/products/${variant.pid}`);
   }
   const before = { stock: variant.stock };

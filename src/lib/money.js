@@ -44,6 +44,3 @@ export function bpOf(amountCents, rateBp) {
   return Math.trunc((amountCents * rateBp + 5000) / 10000);
 }
 
-export function sum(items) {
-  return items.reduce((acc, n) => acc + n, 0);
-}

@@ -23,7 +23,7 @@
 </div>
 
 <div class="chart-wrap">
-  <h2 style="margin-top:0;">Orders per day — trailing 30 days</h2>
+  <h2 class="mt-0">Orders per day — trailing 30 days</h2>
   <% const maxOrders = Math.max(1, ...series.map(d => d.orders)); %>
   <svg viewBox="0 0 900 180" role="img" aria-label="Bar chart of orders per day for the last 30 days">
     <!-- accessible data table alternative follows the chart -->
@@ -62,7 +62,7 @@
             <td class="wrap"><%= v.name %></td>
             <td><%= label || '—' %></td>
             <td class="num"><%= v.available %></td>
-            <td><% if (v.available <= 0 && !v.backorderable) { %><span class="pill pill-cancelled">Out of stock</span><% } else if (v.available <= 0) { %><span class="pill pill-fulfilled">Backorderable</span><% } else { %><span class="pill pill-draft">Low</span><% } %></td>
+            <td><% if (v.available <= 0 && !v.backorderable) { %><span class="pill pill-out">Out of stock</span><% } else if (v.available <= 0) { %><span class="pill pill-backorder">Backorderable</span><% } else { %><span class="pill pill-low">Low</span><% } %></td>
           </tr>
         <% }) %>
         <% if (lowStock.length === 0) { %><tr><td colspan="4">Everything is comfortably stocked.</td></tr><% } %>
@@ -73,7 +73,7 @@
     <h2>Latest activity</h2>
     <ul class="timeline">
       <% recentAudit.forEach((a) => { %>
-        <li><time><%= new Date(a.created_at).toLocaleString('en-US') %></time><span><%= a.action %> <span style="color: var(--ink-muted);"><%= a.entity_type || '' %> <%= a.entity_id ? a.entity_id.slice(0, 8) : '' %></span></span></li>
+        <li><time><%= new Date(a.created_at).toLocaleString('en-US') %></time><span><%= a.action %> <span class="muted-inline"><%= a.entity_type || '' %> <%= a.entity_id ? a.entity_id.slice(0, 8) : '' %></span></span></li>
       <% }) %>
       <% if (recentAudit.length === 0) { %><li>No admin activity recorded yet.</li><% } %>
     </ul>

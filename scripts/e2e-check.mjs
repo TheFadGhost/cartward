@@ -66,16 +66,8 @@ try {
   const reg = await post('/register', { email, password: 'quiet-orchard-lantern', _csrf: csrf(await (await get('/register')).text()) });
   check('account created', reg.status === 302);
 
-  // Verify via captured email
-  const tokenRow = db.prepare(`
-    SELECT vt.token_hash FROM verification_tokens vt
-    JOIN users u ON u.id = vt.user_id WHERE u.email = ? AND vt.purpose = 'email_verify'
-  `).get(email);
-  // Extract raw link from the captured .eml
-  const emlFile = fs.readdirSync('data/e2e-emails').find((f) => f.endsWith('.eml'));
-  void emlFile;
+  // Verify via the captured .eml (exercises the capture provider end to end).
   const mails = fs.readFileSync(`data/e2e-emails/${fs.readdirSync('data/e2e-emails')[0]}`, 'utf8');
-  void tokenRow;
   const verifyToken = /token=([A-Za-z0-9_-]+)/.exec(mails)?.[1];
   const ver = await get(`/verify-email?token=${encodeURIComponent(verifyToken)}`);
   check('email verified from captured mail', (await ver.text()).includes('Email verified'));

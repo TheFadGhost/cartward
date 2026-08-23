@@ -11,13 +11,18 @@
     <section class="gallery" aria-label="Product photos">
       <% if (product.images.length) { %>
         <div class="gallery-main">
-          <img src="<%= product.images[0].url %>" alt="<%= product.images[0].alt_text %>" width="<%= product.images[0].width || 800 %>" height="<%= product.images[0].height || 800 %>">
+          <img id="gallery-main-image" src="<%= product.images[0].url %>" alt="<%= product.images[0].alt_text %>" width="<%= product.images[0].width || 800 %>" height="<%= product.images[0].height || 800 %>">
         </div>
         <% if (product.images.length > 1) { %>
-          <div class="gallery-thumbs" role="list">
-            <% product.images.forEach((img) => { %>
+          <div class="gallery-thumbs" role="list" aria-label="More photos">
+            <% product.images.forEach((img, i) => { %>
               <div role="listitem" class="thumb-frame">
-                <a href="#gallery-<%= img.id %>" class="thumb-link"><img src="<%= img.url %>" alt="<%= img.alt_text %>" width="160" height="160"></a>
+                <button type="button" class="thumb-button <%= i === 0 ? 'is-active' : '' %>"
+                        data-full-src="<%= img.url %>"
+                        data-alt="<%= img.alt_text %>"
+                        aria-label="Show photo <%= i + 1 %> of <%= product.images.length %>: <%= img.alt_text %>">
+                  <img src="<%= img.url %>" alt="" width="160" height="160">
+                </button>
               </div>
             <% }) %>
           </div>

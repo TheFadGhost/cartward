@@ -79,7 +79,11 @@ export function dashboardStats(now = Date.now()) {
   };
 }
 
-const emailForUser = db.prepare('SELECT email FROM users WHERE id = ?');
+export function getCustomerOrders(userId) {
+  return db.prepare(`
+    SELECT * FROM orders WHERE user_id = ? ORDER BY placed_at DESC LIMIT 50
+  `).all(userId);
+}
 
 export function listCustomers({ q = '', limit = 100 } = {}) {
   const like = `%${q}%`;
@@ -102,9 +106,5 @@ export function listCustomers({ q = '', limit = 100 } = {}) {
 export function getCustomer(id) {
   const user = db.prepare('SELECT id, email, role, email_verified_at, totp_enabled_at, created_at FROM users WHERE id = ?').get(id);
   if (!user) return null;
-  user.email = emailForUser.get(id)?.email ?? user.email;
-  const orders = db.prepare(`
-    SELECT * FROM orders WHERE user_id = ? ORDER BY placed_at DESC LIMIT 50
-  `).all(id);
-  return { ...user, orders };
+  return { ...user, orders: getCustomerOrders(id) };
 }

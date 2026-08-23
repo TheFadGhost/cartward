@@ -28,13 +28,15 @@ export function createApp() {
   app.set('views', path.join(ROOT, 'src', 'views'));
   app.set('view options', { root: path.join(ROOT, 'src', 'views') });
   app.disable('x-powered-by');
-  app.set('trust proxy', 1); // behind a single reverse proxy in deployment
+  // Trust the proxy chain ONLY when explicitly configured — otherwise req.ip
+  // would come from a spoofable header and every IP-keyed limiter weakens.
+  if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 
   const directives = {
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'"],
     styleSrc: ["'self'"],
-    imgSrc: ["'self'", 'data:'],
+    imgSrc: ["'self'"],
     connectSrc: ["'self'"],
     fontSrc: ["'self'"],
     objectSrc: ["'none'"],
@@ -62,14 +64,14 @@ export function createApp() {
   app.use(sessionMiddleware);
   app.use(csrfMiddleware);
 
-  // View helpers available to every template.
-  const cartCountStmt = () => db.prepare('SELECT COALESCE(SUM(quantity),0) n FROM cart_items WHERE cart_id = ?');
+  const CART_COUNT_SQL = 'SELECT COALESCE(SUM(quantity),0) n FROM cart_items WHERE cart_id = ?';
+
+// View helpers available to every template.
   app.use((req, res, next) => {
     res.locals.user = req.user;
     res.locals.pending2fa = req.pending2fa;
     res.locals.csrfToken = req.csrfToken();
     res.locals.currentPath = req.path;
-    res.locals.config = config;
     res.locals.formatMoney = formatMoney;
     res.locals.sessionId = req.sessionId ?? null;
     next();
@@ -81,7 +83,7 @@ export function createApp() {
     if (['GET', 'HEAD'].includes(req.method)) {
       try {
         const cart = resolveCart(req, res);
-        if (cart) res.locals.cartCount = cartCountStmt().get(cart.id).n;
+        if (cart) res.locals.cartCount = db.prepare(CART_COUNT_SQL).get(cart.id).n;
       } catch { /* header badge is best-effort */ }
     }
     next();

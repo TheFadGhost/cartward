@@ -1,9 +1,7 @@
 import crypto from 'node:crypto';
 import { db } from '../db/index.js';
+import { config } from '../config.js';
 
-function RESERVATION_TTL_MS() {
-  return Number(process.env.RESERVATION_TTL_MS || 15 * 60 * 1000);
-}
 
 /**
  * Inventory control. Availability = stock - reserved.
@@ -53,7 +51,7 @@ export function reserveLines(orderId, lines) {
         'UPDATE variants SET reserved = reserved + ?, updated_at = ? WHERE id = ? AND stock - reserved >= ?',
       ).run(toReserve, Date.now(), line.variantId, toReserve);
       if (res.changes !== 1) throw new OutOfStockError(line.variantId, v.product_name);
-      insertReservation.run(crypto.randomUUID(), orderId, line.variantId, toReserve, Date.now() + RESERVATION_TTL_MS(), Date.now(), Date.now());
+      insertReservation.run(crypto.randomUUID(), orderId, line.variantId, toReserve, Date.now() + config.reservationTtlMs, Date.now(), Date.now());
     }
   }
 }

@@ -33,11 +33,6 @@ export function getSessionById(id) {
   return selectById.get(id) ?? null;
 }
 
-/** Promote an awaiting-2FA session to fully authenticated. */
-export const promoteSession = db.prepare(
-  'UPDATE sessions SET awaiting_2fa = 0 WHERE id = ?',
-);
-
 /**
  * Session rotation on privilege change (2FA challenge passed): issues a fresh
  * token bound to a fully authenticated session and deletes the old row.

@@ -72,16 +72,21 @@ router.post('/account/security/totp/confirm', async (req, res, next) => {
   }
 });
 
-router.post('/account/security/totp/disable', async (req, res) => {
-  const ok = await verifyPassword(db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id).password_hash, String(req.body.password || ''));
-  if (!ok) {
-    res.flash('warn', 'Password incorrect — two-factor stays on.');
+router.post('/account/security/totp/disable', async (req, res, next) => {
+  try {
+    const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id);
+    const ok = row ? await verifyPassword(row.password_hash, String(req.body.password || '')) : false;
+    if (!ok) {
+      res.flash('warn', 'Password incorrect — two-factor stays on.');
+      return res.redirect('/account/security');
+    }
+    disableTotp(req.user);
+    audit({ actorType: 'customer', actorId: req.user.id, action: 'security.totp_disabled', ip: req.ip });
+    res.flash('success', 'Two-factor authentication disabled.');
     return res.redirect('/account/security');
+  } catch (err) {
+    return next(err);
   }
-  disableTotp(req.user);
-  audit({ actorType: 'customer', actorId: req.user.id, action: 'security.totp_disabled', ip: req.ip });
-  res.flash('success', 'Two-factor authentication disabled.');
-  return res.redirect('/account/security');
 });
 
 router.post('/account/security/sessions/revoke-all', (req, res) => {

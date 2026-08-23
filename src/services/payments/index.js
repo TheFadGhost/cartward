@@ -13,8 +13,4 @@ export function getPaymentProvider(name = 'mock') {
   return p;
 }
 
-export function getActiveProviderName() {
-  return 'mock';
-}
-
 export { TEST_CARDS } from './mock.js';

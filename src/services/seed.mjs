@@ -1,9 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const { db } = await import('../db/index.js');
 const { config } = await import('../config.js');
@@ -12,7 +9,7 @@ const { newId } = await import('../lib/tokens.js');
 const { hashPassword } = await import('./auth.js');
 
 // ---------------------------------------------------------------------------
-// Synthetic reference data â€” all names, brands and addresses are fictional.
+// Synthetic reference data — all names, brands and addresses are fictional.
 // ---------------------------------------------------------------------------
 
 const BRANDS = ['Ardent Forge', 'Mossline', 'Tidal & Timber', 'Fenwick Goods', 'Lumen Yard', 'Copperleaf Studio', 'Driftwell Supply', 'Harrow Lane'];
@@ -88,7 +85,7 @@ const OPENERS = [
 ];
 const CLOSERS = [
   'Ships flat-packed where sensible to cut packaging waste.',
-  'Each piece varies slightly â€” that is the point.',
+  'Each piece varies slightly — that is the point.',
   'Care instructions included; questions welcome.',
   'If it ever fails through ordinary use, we want to hear about it.',
 ];
@@ -126,6 +123,11 @@ async function createUserRow(email, password, role) {
 
 /** Seed the database with a synthetic catalogue and demo accounts. */
 export async function seed({ fresh = false } = {}) {
+  // Guardrail: reseeding wipes every user — refuse in production unless
+  // explicitly overridden.
+  if (process.env.NODE_ENV === 'production' && fresh && process.env.ALLOW_SEED_IN_PROD !== '1') {
+    throw new Error('Refusing to reseed a production database. Set ALLOW_SEED_IN_PROD=1 to override.');
+  }
   if (db.prepare('SELECT COUNT(*) n FROM products').get().n > 0 && !fresh) {
     return { seeded: false, reason: 'already-populated' };
   }
@@ -175,7 +177,7 @@ export async function seed({ fresh = false } = {}) {
       INSERT INTO products (id, brand_id, category_id, name, slug, description, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
     `).run(productId, brandIds[brandIdx], categoryIds[catIdx], name, uniqueSlug(name, 'products'),
-      `${OPENERS[Math.floor(rand() * OPENERS.length)]} The ${name.toLowerCase()} is made by ${BRANDS[brandIdx]} â€” fictional makers, real attention to detail.\n\n${CLOSERS[Math.floor(rand() * CLOSERS.length)]}`,
+      `${OPENERS[Math.floor(rand() * OPENERS.length)]} The ${name.toLowerCase()} is made by ${BRANDS[brandIdx]} — fictional makers, real attention to detail.\n\n${CLOSERS[Math.floor(rand() * CLOSERS.length)]}`,
       now - Math.floor(rand() * 120 * 24 * 3600 * 1000), now);
 
     for (const ti of tagIdxs) {
@@ -215,7 +217,7 @@ export async function seed({ fresh = false } = {}) {
       const filename = `${imageId}.svg`;
       fs.writeFileSync(path.join(uploadProductDir, filename), generateProductSvg(`${productId}:${i}`, 800));
       insertImage.run(imageId, productId, filename,
-        `${name} by ${BRANDS[brandIdx]} â€” illustration ${i + 1}`, 800, 800, i, now);
+        `${name} by ${BRANDS[brandIdx]} — illustration ${i + 1}`, 800, 800, i, now);
     }
   }
 
@@ -308,7 +310,7 @@ export async function seed({ fresh = false } = {}) {
       subtotal += v.price_cents;
     }
     const shippingCents = subtotal >= 7500 ? 0 : 495;
-    const tax = 0; // Oregon address in seed data â€” no sales tax
+    const tax = 0; // Oregon address in seed data — no sales tax
     const total = subtotal + shippingCents + tax;
     const closedAt = ['cancelled', 'refunded'].includes(status) ? placedAt + 2 * day : null;
 
@@ -351,7 +353,7 @@ export async function seed({ fresh = false } = {}) {
       insertEvent.run(newId(), orderId, 'state_change', from, to, detail, actor, Math.min(t, Date.now()));
     }
     if (status === 'pending') {
-      insertEvent.run(newId(), orderId, 'payment_awaiting', null, null, 'Checkout not completed yet â€” this is where stuck orders wait.', 'system', placedAt + 3600 * 1000);
+      insertEvent.run(newId(), orderId, 'payment_awaiting', null, null, 'Checkout not completed yet — this is where stuck orders wait.', 'system', placedAt + 3600 * 1000);
     }
   }
   console.log(`[seed] ${SCENARIOS.length} historical orders across all statuses`);

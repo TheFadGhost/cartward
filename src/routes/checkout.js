@@ -14,6 +14,7 @@ const tokenLib = { sha256 };
 import { config } from '../config.js';
 import { TEST_CARDS } from '../services/payments/index.js';
 import { getPaymentProvider } from '../services/payments/index.js';
+import { humanDeclineReason } from '../services/payments/mock.js';
 
 const router = Router();
 const provider = () => getPaymentProvider('mock');
@@ -129,19 +130,16 @@ router.get('/checkout/review', (req, res) => {
   if (!cart.idempotency_key) {
     db.prepare('UPDATE carts SET idempotency_key = ?, updated_at = ? WHERE id = ?')
       .run(randomIdempotencyKey(), Date.now(), cart.id);
-    cart.idempotency_key = null;
   }
-  const fresh = { ...cart };
-  void fresh;
-  const row = db.prepare('SELECT idempotency_key FROM carts WHERE id = ?').get(cart.id);
+  const currentCart = db.prepare('SELECT * FROM carts WHERE id = ?').get(cart.id);
 
-  const preview = previewTotals(db.prepare('SELECT * FROM carts WHERE id = ?').get(cart.id));
+  const preview = previewTotals(currentCart);
   res.render('checkout/review', {
     title: 'Checkout — review',
     step: 3,
     ...preview,
     options: SHIPPING_METHODS,
-    idempotencyKey: row?.idempotency_key ?? '',
+    idempotencyKey: currentCart.idempotency_key ?? '',
     testCards: TEST_CARDS,
     csrfToken: req.csrfToken(),
   });
@@ -196,7 +194,8 @@ function canViewPendingOrder(req, order) {
 }
 
 function pollToken(orderId) {
-  return hmacHex(config.sessionSecret, `poll:${orderId}`);
+  const bucket = Math.floor(Date.now() / (10 * 60 * 1000));
+  return hmacHex(config.sessionSecret, `poll:${orderId}:${bucket}`);
 }
 
 router.get('/checkout/pay/:id', (req, res, next) => {
@@ -212,12 +211,7 @@ router.get('/checkout/pay/:id', (req, res, next) => {
       order,
       lines,
       payment,
-      failureReason: payment?.status === 'failed'
-        ? (payment.failure_reason === 'card_declined' ? 'Your card was declined.'
-          : payment.failure_reason === 'insufficient_funds' ? 'The card has insufficient funds.'
-            : payment.failure_reason === 'expired_card' ? 'The card has expired.'
-              : 'The payment could not be processed.')
-        : null,
+      failureReason: payment?.status === 'failed' ? humanDeclineReason(payment.failure_reason) : null,
       testCards: TEST_CARDS,
       pollToken: pollToken(order.id),
       baseUrl: config.baseUrl,
@@ -228,7 +222,14 @@ router.get('/checkout/pay/:id', (req, res, next) => {
   }
 });
 
-router.post('/checkout/pay/:id', (req, res, next) => {
+router.post('/checkout/pay/:id',
+  rateLimitMiddleware({
+    name: 'pay-attempt',
+    keyFn: (req) => `${req.ip}:${req.params.id}`,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+  }),
+  (req, res, next) => {
   try {
     const order = getOrderById(req.params.id);
     if (!order || !canViewPendingOrder(req, order)) {
@@ -258,12 +259,8 @@ router.post('/checkout/pay/:id', (req, res, next) => {
 
 function orderUrl(req, order) {
   if (orderBelongsTo(order, req.user && !req.pending2fa ? req.user.id : null)) return `/orders/${order.id}`;
-  return `/orders/track?number=${encodeURIComponent(order.number)}&email=${encodeURIComponent(guestEmailOf(order))}`;
-}
-function guestEmailOf(order) {
-  return order.guest_email
-    ?? JSON.parse(order.shipping_address_json)?.email
-    ?? '';
+  // No email in the URL: the tracking page asks for it (and it must be typed).
+  return `/orders/track?number=${encodeURIComponent(order.number)}`;
 }
 
 export default router;
